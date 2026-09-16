@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}ログイン{% endblock %}
+{% block content %}
+<h1>ログイン (ローカル検証用)</h1>
+<p class="note">本番では Entra ID でログインします。ここでは検証のため利用者を選んでログインします。</p>
+<form method="post" action="/auth/login" class="card">
+  <input type="hidden" name="next" value="{{ next }}">
+  {% for u in users %}
+  <label class="radio"><input type="radio" name="email" value="{{ u.email }}" {% if loop.first %}checked{% endif %}> {{ u.name }} <small>[{{ u.role_label }}] {{ u.email }}</small></label>
+  {% endfor %}
+  <button type="submit" class="primary">ログイン</button>
+</form>
+{% endblock %}

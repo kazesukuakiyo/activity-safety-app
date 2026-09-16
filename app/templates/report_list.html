@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block title %}活動届一覧{% endblock %}
+{% block content %}
+<h1>{% if user.can_submit %}提出した活動届{% else %}活動届一覧{% endif %}</h1>
+<form method="get" class="filter">
+  <select name="status"><option value="">状況: すべて</option>{% for s in statuses %}<option value="{{ s.value }}" {% if status==s.value %}selected{% endif %}>{{ s.value }}</option>{% endfor %}</select>
+  <input type="text" name="q" placeholder="申請番号・活動内容・場所で検索" value="{{ q }}">
+  <button type="submit">絞り込み</button>
+</form>
+<table>
+<thead><tr><th>申請番号</th><th>団体</th><th>活動内容</th><th>期間</th><th>事前確認</th><th>申請者確認</th><th>状況</th><th>提出日時</th></tr></thead>
+<tbody>
+{% for r in reports %}
+<tr>
+  <td><a href="/reports/{{ r.id }}">{{ r.application_no }}</a></td>
+  <td>{{ r.organization.name }}</td>
+  <td>{{ r.content[:40] }}</td>
+  <td>{{ r.start_at.strftime('%m/%d %H:%M') }}～{{ r.end_at.strftime('%m/%d %H:%M') }}</td>
+  <td>{{ '対象' if r.requires_precheck else '－' }}</td>
+  <td>{% if not user.can_submit %}<span class="badge c-{{ r.applicant_check.name|lower }}">{{ r.applicant_check.value }}</span>{% endif %}</td>
+  <td><span class="badge s-{{ r.status.name|lower }}">{{ r.status.value }}</span></td>
+  <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+</tr>
+{% else %}
+<tr><td colspan="8" class="empty">活動届はありません</td></tr>
+{% endfor %}
+</tbody></table>
+{% endblock %}

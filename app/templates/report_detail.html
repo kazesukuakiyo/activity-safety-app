@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% block title %}{{ report.application_no }}{% endblock %}
+{% block content %}
+<h1>{{ report.application_no }} <span class="badge s-{{ report.status.name|lower }}">{{ report.status.value }}</span></h1>
+<div class="grid2">
+<section class="card">
+  <h2>届出内容</h2>
+  <dl>
+    <dt>所属する団体</dt><dd>{{ report.organization.name }}{% if not user.can_submit %} <small>(団体ID: {{ report.org_code }})</small>{% endif %}</dd>
+    <dt>活動内容</dt><dd class="pre">{{ report.content }}</dd>
+    <dt>期間</dt><dd>{{ report.start_at.strftime('%Y-%m-%d %H:%M') }} ～ {{ report.end_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+    <dt>活動場所・宿泊先</dt><dd class="pre">{{ report.location }}</dd>
+    <dt>参加予定人数</dt><dd>{{ report.participants_count }} 名</dd>
+    <dt>現地責任者</dt><dd>{{ report.leader_name }} / {{ report.leader_phone }} / {{ report.leader_email }}</dd>
+    <dt>事前確認対象</dt><dd>{{ 'はい' if report.requires_precheck else 'いいえ' }}</dd>
+    <dt>行程等の概要</dt><dd class="pre">{{ report.itinerary_summary or '－' }}</dd>
+    <dt>添付書類確認 (自己申告)</dt><dd>{{ '行程等 ' if report.declared_itinerary }}{{ '参加者名簿' if report.declared_roster }}{% if not report.declared_itinerary and not report.declared_roster %}－{% endif %}</dd>
+    <dt>大学への連絡事項</dt><dd class="pre">{{ report.notes_to_university or '－' }}</dd>
+  </dl>
+  <h3>添付ファイル</h3>
+  <ul>
+  {% for a in report.attachments %}
+    <li>[{{ a.kind.value }}]
+      {% if a.is_restricted and not user.can_view_rosters %}{{ a.original_name }} <small>(限定保管先: 指定職員・管理職のみ閲覧可)</small>
+      {% else %}<a href="/reports/{{ report.id }}/attachments/{{ a.id }}">{{ a.original_name }}</a>{% endif %}
+      <small>{{ (a.size_bytes/1024)|round(1) }} KB {% if a.is_restricted %}→ 個人情報管理サイト{% else %}→ 活動資料{% endif %}</small></li>
+  {% else %}<li>なし</li>{% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <h2>管理情報</h2>
+  <dl>
+    <dt>申請者</dt><dd>{{ report.applicant_name }} &lt;{{ report.applicant_email }}&gt;</dd>
+    {% if not user.can_submit %}
+    <dt>申請者確認</dt><dd><span class="badge c-{{ report.applicant_check.name|lower }}">{{ report.applicant_check.value }}</span></dd>
+    <dt>作成元</dt><dd>{{ report.source }}</dd>
+    <dt>不足検査</dt><dd class="pre">{{ report.missing_items or '不足なし' }}</dd>
+    {% endif %}
+    <dt>備考</dt><dd class="pre">{{ report.remarks or '－' }}</dd>
+    <dt>提出日時</dt><dd>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+    <dt>最終更新</dt><dd>{{ report.updated_at.strftime('%Y-%m-%d %H:%M') }} {{ report.updated_by }}</dd>
+  </dl>
+  {% if user.can_edit_reports %}
+  <h3>状況の更新</h3>
+  <form method="post" action="/reports/{{ report.id }}/status">
+    <label>状況 <select name="status">{% for s in statuses %}<option value="{{ s.value }}" {% if s == report.status %}selected{% endif %}>{{ s.value }}</option>{% endfor %}</select></label>
+    <label>備考 <small>差戻し理由、申し送り、帰着連絡などの個別指示</small><textarea name="remarks" rows="4">{{ report.remarks }}</textarea></label>
+    <button type="submit" class="primary">更新する</button>
+    <p class="note">「確認済」「差戻し」に変更したときだけ申請者へ通知します。同じ状況での再保存では通知しません。</p>
+  </form>
+  {% endif %}
+</section>
+</div>
+<p><a href="/reports">← 一覧へ</a></p>
+{% endblock %}

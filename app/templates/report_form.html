@@ -1,0 +1,70 @@
+{% extends "base.html" %}{% block title %}学外活動届の提出{% endblock %}
+{% block content %}
+<h1>部活・サークル 学外活動届</h1>
+<p class="lead">部活・サークルが学外で活動する場合に提出してください。学内で行う通常の練習・ミーティング等は提出不要です。宿泊・海外、学生による車両運転、山岳・水辺・火気等、通常より危険を伴う活動では、行程表等および参加者名簿の提出が必要です。</p>
+{% if errors %}<div class="alert">{% for e in errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+<form method="post" action="/reports/new" enctype="multipart/form-data" class="card">
+  <p class="who-line">提出者: {{ user.name }} ({{ user.email }})</p>
+
+  <label>1. 所属する団体 <span class="req">必須</span>
+    <select name="organization_id" required>
+      <option value="">選択してください</option>
+      {% for o in orgs %}<option value="{{ o.id }}" {% if form.get('organization_id')|string == o.id|string %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+    </select>
+  </label>
+
+  <label>2. 活動内容 <span class="req">必須</span><small>大会名、合宿名、目的等が分かるように記入</small>
+    <textarea name="content" rows="3" required>{{ form.get('content','') }}</textarea></label>
+
+  <div class="row">
+    <label>3. 開始日時 <span class="req">必須</span><input type="datetime-local" name="start_at" value="{{ form.get('start_at','') }}" required></label>
+    <label>4. 終了日時 <span class="req">必須</span><small>宿泊等は帰着または団体解散予定を含む</small><input type="datetime-local" name="end_at" value="{{ form.get('end_at','') }}" required></label>
+  </div>
+
+  <label>5. 活動場所・宿泊先 <span class="req">必須</span><small>施設名、所在地、複数場所、宿泊先</small>
+    <textarea name="location" rows="2" required>{{ form.get('location','') }}</textarea></label>
+
+  <label>6. 参加予定人数 <span class="req">必須</span><small>学生、教職員、指導者等を含む合計</small>
+    <input type="number" name="participants_count" min="1" value="{{ form.get('participants_count','') }}" required></label>
+
+  <div class="row">
+    <label>7. 現地責任者氏名 <span class="req">必須</span><input type="text" name="leader_name" value="{{ form.get('leader_name','') }}" required></label>
+    <label>8. 現地責任者携帯番号 <span class="req">必須</span><input type="tel" name="leader_phone" value="{{ form.get('leader_phone','') }}" required></label>
+    <label>9. 現地責任者メール <span class="req">必須</span><small>学内メール</small><input type="email" name="leader_email" value="{{ form.get('leader_email','') }}" required></label>
+  </div>
+
+  <fieldset>
+    <legend>10. 事前確認対象 <span class="req">必須</span></legend>
+    <p>今回の活動は、次のいずれかに該当しますか</p>
+    <ul>
+      <li>宿泊または海外を伴う</li>
+      <li>学生が自動車等を運転する</li>
+      <li>山岳、水辺、火気など、通常より危険を伴う</li>
+    </ul>
+    <p><small>該当する場合は「はい」を選択し、行程等の概要と必要書類を提出してください。</small></p>
+    <label class="radio"><input type="radio" name="requires_precheck" value="yes" {% if form.get('requires_precheck')=='yes' %}checked{% endif %} required> はい (事前確認対象)</label>
+    <label class="radio"><input type="radio" name="requires_precheck" value="no" {% if form.get('requires_precheck')=='no' %}checked{% endif %} required> いいえ</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>事前確認対象の活動のみ入力・添付してください</legend>
+    <label>11. 行程等の概要 <small>任意 (対象活動では必要)</small>
+      <textarea name="itinerary_summary" rows="3">{{ form.get('itinerary_summary','') }}</textarea></label>
+
+    <p>12. 添付書類確認 <small>添付した書類を選んでください</small></p>
+    <label class="radio"><input type="checkbox" name="declared_docs" value="itinerary"> 行程表・活動計画書等</label>
+    <label class="radio"><input type="checkbox" name="declared_docs" value="roster"> 参加者名簿</label>
+
+    <p>13. 添付ファイル</p>
+    <p class="note">事前確認対象の活動では、行程表・活動計画書等と参加者名簿を添付してください。名簿には、病歴、障害情報、常用薬、保護者連絡先等を記載しないでください。名簿の記載項目は「学籍番号、氏名、所属、学年」までです。</p>
+    <label>行程表・活動計画書・大会要項等 <input type="file" name="itinerary_files" multiple></label>
+    <label>参加者名簿 <small>限定された保管先に保存されます</small><input type="file" name="roster_files" multiple></label>
+    <label>その他 <input type="file" name="other_files" multiple></label>
+  </fieldset>
+
+  <label>14. 大学への連絡事項 <small>任意: 安全配慮・懸念等</small>
+    <textarea name="notes_to_university" rows="2">{{ form.get('notes_to_university','') }}</textarea></label>
+
+  <button type="submit" class="primary">提出する</button>
+</form>
+{% endblock %}

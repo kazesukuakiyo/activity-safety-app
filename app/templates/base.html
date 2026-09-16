@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}学外活動届{% endblock %} | 課外活動安全管理システム</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">課外活動安全管理システム</a>
+  <nav>
+    {% if user %}
+      {% if user.can_submit %}<a href="/reports/new">活動届を提出</a><a href="/reports">提出した活動届</a><a href="/rosters">年度部員名簿</a>{% endif %}
+      {% if user.can_view_all_reports or user.role.value == 'advisor' %}<a href="/reports">活動届一覧</a>{% endif %}
+      {% if user.can_view_rosters %}<a href="/rosters">名簿保管先</a>{% endif %}
+      {% if user.can_manage_orgs %}<a href="/orgs">団体台帳</a>{% endif %}
+      <a href="/notifications">通知</a>
+    {% endif %}
+  </nav>
+  <div class="who">
+    {% if user %}
+      <span>{{ user.name }} <small>[{{ user.role_label }}]</small></span>
+      <form method="post" action="/auth/logout" class="inline"><button type="submit" class="link">ログアウト</button></form>
+    {% endif %}
+  </div>
+</header>
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+<footer class="foot">ローカル検証版 (認証: 疑似ログイン)。通知はメール送信の代わりに「通知」画面に記録されます。</footer>
+</body>
+</html>

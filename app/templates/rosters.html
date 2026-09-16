@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% block title %}年度部員名簿{% endblock %}
+{% block content %}
+<h1>年度部員名簿</h1>
+<p class="note">年度初めに年1回提出してください。加入・退部等で必要がある場合は更新版を提出してください。活動ごとの参加者名簿は活動届に添付するもので、この年度名簿の提出があっても省略できません。</p>
+{% if user.can_submit %}
+<form method="post" action="/rosters/new" enctype="multipart/form-data" class="card">
+  <h2>名簿を提出する</h2>
+  <label>団体 <select name="organization_id" required><option value="">選択してください</option>{% for o in orgs %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}</select></label>
+  <label>年度 <input type="number" name="fiscal_year" value="{{ fiscal_year }}" required></label>
+  <label>名簿ファイル <small>記載項目は学籍番号・氏名・所属・学年まで。病歴・障害情報・常用薬・保護者連絡先等は記載しないでください</small><input type="file" name="file" required></label>
+  <label>備考 <small>任意: 更新理由など</small><input type="text" name="note"></label>
+  <button type="submit" class="primary">提出する</button>
+</form>
+{% endif %}
+<table>
+<thead><tr><th>年度</th><th>団体</th><th>ファイル</th><th>提出者</th><th>提出日時</th><th>備考</th></tr></thead>
+<tbody>
+{% for r in rosters %}
+<tr><td>{{ r.fiscal_year }}</td><td>{{ r.organization.name }}</td>
+  <td>{% if user.can_view_rosters %}<a href="/rosters/{{ r.id }}/download">{{ r.original_name }}</a>{% else %}{{ r.original_name }}{% endif %}</td>
+  <td>{{ r.submitted_by_email }}</td><td>{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ r.note }}</td></tr>
+{% else %}<tr><td colspan="6" class="empty">提出された名簿はありません</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}

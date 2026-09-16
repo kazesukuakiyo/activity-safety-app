@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block title %}団体の編集{% endblock %}
+{% block content %}
+<h1>{{ '団体の編集' if org else '団体の追加' }}</h1>
+{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+<form method="post" action="/orgs/save" class="card">
+  {% if org %}<input type="hidden" name="org_id" value="{{ org.id }}">{% endif %}
+  <label>団体名 <span class="req">必須</span><small>学生向け表示名</small><input type="text" name="name" value="{{ org.name if org else '' }}" required></label>
+  <label>団体ID <span class="req">必須</span><small>改称に影響されない不変キー</small><input type="text" name="org_code" value="{{ org.org_code if org else '' }}" required></label>
+  <label>代表者メール<input type="email" name="rep_email" value="{{ org.rep_email if org else '' }}"></label>
+  <label>副代表者メール <small>任意</small><input type="email" name="vice_rep_email" value="{{ org.vice_rep_email if org else '' }}"></label>
+  <label>顧問メール<input type="email" name="advisor_email" value="{{ org.advisor_email if org else '' }}"></label>
+  <label class="radio"><input type="checkbox" name="is_active" {% if not org or org.is_active %}checked{% endif %}> 有効 (フォームの選択肢に表示する)</label>
+  <button type="submit" class="primary">保存</button> <a href="/orgs">キャンセル</a>
+</form>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}通知{% endblock %}
+{% block content %}
+<h1>通知 (送信箱)</h1>
+<p class="note">ローカル検証ではメールを送らず、送信されるはずの通知をここに記録します。</p>
+{% for n in items %}
+<details class="card mail">
+  <summary><span class="tag">{{ n.kind }}</span> <strong>{{ n.subject }}</strong> <small>→ {{ n.to_email }} / {{ n.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></summary>
+  <pre>{{ n.body }}</pre>
+  {% if n.report_id %}<a href="/reports/{{ n.report_id }}">活動届を開く</a>{% endif %}
+</details>
+{% else %}<p class="empty">通知はありません</p>{% endfor %}
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}団体台帳{% endblock %}
+{% block content %}
+<h1>団体台帳</h1>
+<p><a href="/orgs/new" class="button">団体を追加</a></p>
+<table>
+<thead><tr><th>団体名</th><th>団体ID</th><th>代表者メール</th><th>副代表者メール</th><th>顧問メール</th><th>有効</th><th></th></tr></thead>
+<tbody>
+{% for o in orgs %}
+<tr class="{% if not o.is_active %}muted{% endif %}"><td>{{ o.name }}</td><td>{{ o.org_code }}</td><td>{{ o.rep_email }}</td><td>{{ o.vice_rep_email }}</td><td>{{ o.advisor_email }}</td><td>{{ '有効' if o.is_active else '休止' }}</td><td><a href="/orgs/{{ o.id }}/edit">編集</a></td></tr>
+{% endfor %}
+</tbody></table>
+{% endblock %}
