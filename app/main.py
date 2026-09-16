@@ -22,7 +22,6 @@ templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 async def _lifespan(app: FastAPI):
     init_db()
     settings.activity_docs_dir.mkdir(parents=True, exist_ok=True)
-    settings.roster_vault_dir.mkdir(parents=True, exist_ok=True)
     yield
 
 
@@ -38,8 +37,9 @@ else:
     from .auth import dev as auth_module
 app.include_router(auth_module.router)
 
-from .routers import notifications, orgs, reports, rosters  # noqa: E402
+from .routers import dashboard, notifications, orgs, reports, rosters  # noqa: E402
 
+app.include_router(dashboard.router)
 app.include_router(reports.router)
 app.include_router(orgs.router)
 app.include_router(rosters.router)
@@ -62,8 +62,8 @@ def index(request: Request):
     user = user_from_session(request)
     if user is None:
         return RedirectResponse("/auth/login", status_code=303)
-    if user.can_view_all_reports:
-        return RedirectResponse("/reports", status_code=303)
-    if user.role.value == "advisor":
+    if user.role.value in ("staff", "manager"):
+        return RedirectResponse("/dashboard", status_code=303)
+    if user.can_view_all_reports or user.role.value == "advisor":
         return RedirectResponse("/reports", status_code=303)
     return RedirectResponse("/reports/new", status_code=303)

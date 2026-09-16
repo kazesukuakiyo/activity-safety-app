@@ -1,11 +1,12 @@
 {% extends "base.html" %}{% block title %}提出完了{% endblock %}
 {% block content %}
-<h1>提出を受け付けました</h1>
+<h1>{{ '再提出' if report.revision > 1 else '提出' }}を受け付けました</h1>
 <div class="card">
-  <p><strong>申請番号:</strong> {{ report.application_no }}</p>
+  <p><strong>申請番号:</strong> {{ report.application_no }} {% if report.revision > 1 %}<small>(第{{ report.revision }}版)</small>{% endif %}</p>
   <p><strong>状況:</strong> <span class="badge s-{{ report.status.name|lower }}">{{ report.status.value }}</span></p>
   {% if report.status.value == '差戻し' %}
-    <div class="alert"><strong>必要資料が不足しています。</strong><pre>{{ report.remarks }}</pre>不足分を揃えて再提出してください。</div>
+    <div class="alert"><strong>必要資料が不足しています。</strong><pre>{{ report.remarks }}</pre>
+      <a class="button" href="/reports/{{ report.id }}/edit">修正して再提出する</a></div>
   {% elif report.requires_precheck %}
     <p>事前確認対象の活動です。大学からの確認結果または差戻し連絡を確認してください。</p>
   {% else %}

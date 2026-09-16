@@ -42,10 +42,5 @@ class Settings:
         """行程表・大会要項など「活動資料」の保管先 (課外活動申請サイト相当)。"""
         return self.data_dir / "activity_docs"
 
-    @property
-    def roster_vault_dir(self) -> Path:
-        """参加者名簿・年度部員名簿の限定保管先 (個人情報管理サイト相当)。"""
-        return self.data_dir / "personal_info_vault"
-
 
 settings = Settings()

@@ -1,15 +1,20 @@
-{% extends "base.html" %}{% block title %}学外活動届の提出{% endblock %}
+{% extends "base.html" %}{% block title %}{{ '学外活動届の再提出' if report else '学外活動届の提出' }}{% endblock %}
 {% block content %}
+{% if report %}
+<h1>学外活動届の修正・再提出 <small class="muted-text">{{ report.application_no }}</small></h1>
+<div class="alert"><strong>差戻し理由</strong><pre>{{ report.remarks }}</pre></div>
+{% else %}
 <h1>部活・サークル 学外活動届</h1>
 <p class="lead">部活・サークルが学外で活動する場合に提出してください。学内で行う通常の練習・ミーティング等は提出不要です。宿泊・海外、学生による車両運転、山岳・水辺・火気等、通常より危険を伴う活動では、行程表等および参加者名簿の提出が必要です。</p>
-{% if errors %}<div class="alert">{% for e in errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
-<form method="post" action="/reports/new" enctype="multipart/form-data" class="card">
+{% endif %}
+{% if errors %}<div class="alert">{% for e in errors %}<div class="pre">{{ e }}</div>{% endfor %}</div>{% endif %}
+<form method="post" action="{{ '/reports/%d/edit' % report.id if report else '/reports/new' }}" enctype="multipart/form-data" class="card" id="report-form">
   <p class="who-line">提出者: {{ user.name }} ({{ user.email }})</p>
 
   <label>1. 所属する団体 <span class="req">必須</span>
-    <select name="organization_id" required>
+    <select name="organization_id" id="organization_id" required>
       <option value="">選択してください</option>
-      {% for o in orgs %}<option value="{{ o.id }}" {% if form.get('organization_id')|string == o.id|string %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+      {% for o in orgs %}<option value="{{ o.id }}" {% if form.get('organization_id')|string == o.id|string %}selected{% endif %} data-members="{{ '1' if o.id in member_org_ids else '' }}">{{ o.name }}</option>{% endfor %}
     </select>
   </label>
 
@@ -41,30 +46,101 @@
       <li>学生が自動車等を運転する</li>
       <li>山岳、水辺、火気など、通常より危険を伴う</li>
     </ul>
-    <p><small>該当する場合は「はい」を選択し、行程等の概要と必要書類を提出してください。</small></p>
+    <p><small>該当する場合は「はい」を選択し、行程等の概要・行程表・参加者名簿を提出してください。</small></p>
     <label class="radio"><input type="radio" name="requires_precheck" value="yes" {% if form.get('requires_precheck')=='yes' %}checked{% endif %} required> はい (事前確認対象)</label>
     <label class="radio"><input type="radio" name="requires_precheck" value="no" {% if form.get('requires_precheck')=='no' %}checked{% endif %} required> いいえ</label>
   </fieldset>
 
-  <fieldset>
+  <fieldset id="precheck-section">
     <legend>事前確認対象の活動のみ入力・添付してください</legend>
     <label>11. 行程等の概要 <small>任意 (対象活動では必要)</small>
       <textarea name="itinerary_summary" rows="3">{{ form.get('itinerary_summary','') }}</textarea></label>
 
-    <p>12. 添付書類確認 <small>添付した書類を選んでください</small></p>
-    <label class="radio"><input type="checkbox" name="declared_docs" value="itinerary"> 行程表・活動計画書等</label>
-    <label class="radio"><input type="checkbox" name="declared_docs" value="roster"> 参加者名簿</label>
+    <p>12. 添付書類確認</p>
+    <label class="radio"><input type="checkbox" name="declared_docs" value="itinerary" {% if 'itinerary' in form.get('declared_docs', []) %}checked{% endif %}> 行程表・活動計画書等を添付した</label>
 
-    <p>13. 添付ファイル</p>
-    <p class="note">事前確認対象の活動では、行程表・活動計画書等と参加者名簿を添付してください。名簿には、病歴、障害情報、常用薬、保護者連絡先等を記載しないでください。名簿の記載項目は「学籍番号、氏名、所属、学年」までです。</p>
+    <p>13. 行程表・活動計画書・大会要項等 (ファイル添付)</p>
+    {% if report and report.attachments %}
+    <ul class="attach-list">
+      {% for a in report.attachments %}
+      <li><label class="radio"><input type="checkbox" name="remove_attachments" value="{{ a.id }}"> 削除する</label> [{{ a.kind.value }}] {{ a.original_name }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
     <label>行程表・活動計画書・大会要項等 <input type="file" name="itinerary_files" multiple></label>
-    <label>参加者名簿 <small>限定された保管先に保存されます</small><input type="file" name="roster_files" multiple></label>
     <label>その他 <input type="file" name="other_files" multiple></label>
+  </fieldset>
+
+  <fieldset id="roster-section">
+    <legend>参加者名簿 <small>事前確認対象の活動では必要</small></legend>
+    <p class="note">記載できるのは <strong>学籍番号・氏名・所属・学年</strong> の 4 項目だけです。病歴、障害情報、常用薬、保護者連絡先などは登録できません。参加者が変わったときは、活動実施前に担当部署へ連絡してください。</p>
+
+    <div id="member-picker" hidden>
+      <p><strong>部員一覧から選ぶ</strong> <small>(<span id="member-fy"></span>年度の年度部員名簿) <button type="button" class="link" id="member-all">全員選択</button> / <button type="button" class="link" id="member-none">解除</button></small></p>
+      <div id="member-list" class="member-grid"></div>
+    </div>
+    <p id="member-hint" class="note" hidden>この団体の年度部員名簿がまだ登録されていないか、あなたが代表者・副代表者として登録されていません。下の欄に貼り付けてください。</p>
+
+    <label>貼り付けで追加 <small>Excel で「学籍番号・氏名・所属・学年」の 4 列を選んでコピーし、ここに貼り付けてください (1 行 1 人)</small>
+      <textarea name="roster_text" rows="5" placeholder="2024001	山田 太郎	工学部	2
+2024002	佐藤 花子	文学部	1">{{ form.get('roster_text','') }}</textarea></label>
   </fieldset>
 
   <label>14. 大学への連絡事項 <small>任意: 安全配慮・懸念等</small>
     <textarea name="notes_to_university" rows="2">{{ form.get('notes_to_university','') }}</textarea></label>
 
-  <button type="submit" class="primary">提出する</button>
+  <button type="submit" class="primary">{{ '再提出する' if report else '提出する' }}</button>
+  {% if report %}<a href="/reports/{{ report.id }}">キャンセル</a>{% endif %}
 </form>
+<script>
+(function () {
+  const sel = document.getElementById('organization_id');
+  const picker = document.getElementById('member-picker');
+  const hint = document.getElementById('member-hint');
+  const list = document.getElementById('member-list');
+  const fy = document.getElementById('member-fy');
+  const preselected = new Set({{ form.get('member_ids', []) | tojson }}.map(String));
+
+  async function load() {
+    list.innerHTML = '';
+    picker.hidden = true; hint.hidden = true;
+    const orgId = sel.value;
+    if (!orgId) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt.dataset.members) { hint.hidden = false; return; }
+    const res = await fetch('/rosters/' + orgId + '/members.json');
+    const data = await res.json();
+    if (!data.allowed || data.members.length === 0) { hint.hidden = false; return; }
+    fy.textContent = data.fiscal_year;
+    for (const m of data.members) {
+      const label = document.createElement('label');
+      label.className = 'radio';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.name = 'member_ids'; cb.value = m.id;
+      if (preselected.has(String(m.id))) cb.checked = true;
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' ' + m.name + ' '));
+      const small = document.createElement('small');
+      small.textContent = m.student_no + ' / ' + m.department + ' / ' + m.grade + '年';
+      label.appendChild(small);
+      list.appendChild(label);
+    }
+    picker.hidden = false;
+  }
+  document.getElementById('member-all').onclick = () => list.querySelectorAll('input').forEach(c => c.checked = true);
+  document.getElementById('member-none').onclick = () => list.querySelectorAll('input').forEach(c => c.checked = false);
+  sel.addEventListener('change', load);
+  load();
+
+  // 事前確認対象「いいえ」のときは追加項目を薄く表示する (入力自体は可能)
+  const radios = document.querySelectorAll('input[name=requires_precheck]');
+  const sections = [document.getElementById('precheck-section'), document.getElementById('roster-section')];
+  function toggle() {
+    const yes = document.querySelector('input[name=requires_precheck][value=yes]').checked;
+    sections.forEach(s => s.classList.toggle('dimmed', !yes && document.querySelector('input[name=requires_precheck]:checked') !== null));
+  }
+  radios.forEach(r => r.addEventListener('change', toggle));
+  toggle();
+})();
+</script>
 {% endblock %}

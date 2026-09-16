@@ -52,7 +52,10 @@ def login(client, email: str):
     return client
 
 
-def submit_report(client, *, org_id: int, precheck: bool, files: dict | None = None, declared=(), **overrides):
+ROSTER_TEXT = "2023001\t田中 太郎\t工学部\t3\n2024001\t中村 健\t経済学部\t2\n"
+
+
+def report_data(*, org_id: int, precheck: bool, roster: str = "", declared=(), **overrides) -> dict:
     data = {
         "organization_id": str(org_id),
         "content": "テスト大会への参加",
@@ -66,14 +69,23 @@ def submit_report(client, *, org_id: int, precheck: bool, files: dict | None = N
         "requires_precheck": "yes" if precheck else "no",
         "itinerary_summary": "1日目移動、2日目試合" if precheck else "",
         "declared_docs": list(declared),
+        "roster_text": roster,
         "notes_to_university": "",
     }
     data.update(overrides)
-    uploads = []
-    for field, items in (files or {}).items():
-        for name, content in items:
-            uploads.append((field, (name, content, "application/octet-stream")))
-    r = client.post("/reports/new", data=data, files=uploads or None, follow_redirects=False)
+    return data
+
+
+ITINERARY_FILE = [("itinerary_files", ("itinerary.pdf", b"%PDF itinerary", "application/pdf"))]
+
+
+def submit_report(client, *, org_id: int, precheck: bool, roster: str = "", itinerary_file: bool = False, declared=(), **overrides):
+    data = report_data(org_id=org_id, precheck=precheck, roster=roster, declared=declared, **overrides)
+    r = client.post("/reports/new", data=data, files=ITINERARY_FILE if itinerary_file else None, follow_redirects=False)
     assert r.status_code == 303, r.text
-    report_id = int(r.headers["location"].split("/")[2])
-    return report_id
+    return int(r.headers["location"].split("/")[2])
+
+
+def submit_full(client, *, org_id: int):
+    """事前確認対象を必要資料つきで提出する"""
+    return submit_report(client, org_id=org_id, precheck=True, roster=ROSTER_TEXT, itinerary_file=True, declared=("itinerary",))

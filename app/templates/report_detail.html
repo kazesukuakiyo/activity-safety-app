@@ -1,6 +1,10 @@
 {% extends "base.html" %}{% block title %}{{ report.application_no }}{% endblock %}
 {% block content %}
-<h1>{{ report.application_no }} <span class="badge s-{{ report.status.name|lower }}">{{ report.status.value }}</span></h1>
+<h1>{{ report.application_no }} <span class="badge s-{{ report.status.name|lower }}">{{ report.status.value }}</span>
+  {% if report.revision > 1 %}<small class="muted-text">第{{ report.revision }}版</small>{% endif %}</h1>
+{% if is_owner and report.can_resubmit %}
+<div class="alert"><strong>差戻されています。</strong><pre>{{ report.remarks }}</pre><a class="button" href="/reports/{{ report.id }}/edit">修正して再提出する</a></div>
+{% endif %}
 <div class="grid2">
 <section class="card">
   <h2>届出内容</h2>
@@ -9,22 +13,32 @@
     <dt>活動内容</dt><dd class="pre">{{ report.content }}</dd>
     <dt>期間</dt><dd>{{ report.start_at.strftime('%Y-%m-%d %H:%M') }} ～ {{ report.end_at.strftime('%Y-%m-%d %H:%M') }}</dd>
     <dt>活動場所・宿泊先</dt><dd class="pre">{{ report.location }}</dd>
-    <dt>参加予定人数</dt><dd>{{ report.participants_count }} 名</dd>
-    <dt>現地責任者</dt><dd>{{ report.leader_name }} / {{ report.leader_phone }} / {{ report.leader_email }}</dd>
+    <dt>参加予定人数</dt><dd>{{ report.participants_count }} 名 <small>(名簿 {{ report.participants|length }} 名)</small></dd>
+    <dt>現地責任者</dt><dd>{{ report.leader_name }} / <a href="tel:{{ report.leader_phone }}">{{ report.leader_phone }}</a> / {{ report.leader_email }}</dd>
     <dt>事前確認対象</dt><dd>{{ 'はい' if report.requires_precheck else 'いいえ' }}</dd>
     <dt>行程等の概要</dt><dd class="pre">{{ report.itinerary_summary or '－' }}</dd>
-    <dt>添付書類確認 (自己申告)</dt><dd>{{ '行程等 ' if report.declared_itinerary }}{{ '参加者名簿' if report.declared_roster }}{% if not report.declared_itinerary and not report.declared_roster %}－{% endif %}</dd>
+    <dt>添付書類確認</dt><dd>{{ '行程等を添付した' if report.declared_itinerary else '－' }}</dd>
     <dt>大学への連絡事項</dt><dd class="pre">{{ report.notes_to_university or '－' }}</dd>
   </dl>
   <h3>添付ファイル</h3>
   <ul>
   {% for a in report.attachments %}
-    <li>[{{ a.kind.value }}]
-      {% if a.is_restricted and not user.can_view_rosters %}{{ a.original_name }} <small>(限定保管先: 指定職員・管理職のみ閲覧可)</small>
-      {% else %}<a href="/reports/{{ report.id }}/attachments/{{ a.id }}">{{ a.original_name }}</a>{% endif %}
-      <small>{{ (a.size_bytes/1024)|round(1) }} KB {% if a.is_restricted %}→ 個人情報管理サイト{% else %}→ 活動資料{% endif %}</small></li>
+    <li>[{{ a.kind.value }}] <a href="/reports/{{ report.id }}/attachments/{{ a.id }}">{{ a.original_name }}</a> <small>{{ (a.size_bytes/1024)|round(1) }} KB</small></li>
   {% else %}<li>なし</li>{% endfor %}
   </ul>
+
+  <h3>参加者名簿 <small>{{ report.participants|length }} 名</small></h3>
+  {% if show_participants %}
+    {% if report.participants %}
+    <table class="compact">
+      <thead><tr><th>学籍番号</th><th>氏名</th><th>所属</th><th>学年</th></tr></thead>
+      <tbody>{% for p in report.participants %}<tr><td>{{ p.student_no }}</td><td>{{ p.name }}</td><td>{{ p.department }}</td><td>{{ p.grade }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% if user.can_view_rosters %}<p><a href="/reports/{{ report.id }}/participants.csv">CSV でダウンロード</a></p>{% endif %}
+    {% else %}<p class="muted-text">登録なし</p>{% endif %}
+  {% else %}
+    <p class="muted-text">参加者名簿は指定職員・管理職のみ閲覧できます。</p>
+  {% endif %}
 </section>
 
 <section class="card">
@@ -37,7 +51,8 @@
     <dt>不足検査</dt><dd class="pre">{{ report.missing_items or '不足なし' }}</dd>
     {% endif %}
     <dt>備考</dt><dd class="pre">{{ report.remarks or '－' }}</dd>
-    <dt>提出日時</dt><dd>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+    <dt>初回提出</dt><dd>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+    <dt>最終提出</dt><dd>{{ report.submitted_at.strftime('%Y-%m-%d %H:%M') }} (第{{ report.revision }}版)</dd>
     <dt>最終更新</dt><dd>{{ report.updated_at.strftime('%Y-%m-%d %H:%M') }} {{ report.updated_by }}</dd>
   </dl>
   {% if user.can_edit_reports %}
@@ -48,6 +63,14 @@
     <button type="submit" class="primary">更新する</button>
     <p class="note">「確認済」「差戻し」に変更したときだけ申請者へ通知します。同じ状況での再保存では通知しません。</p>
   </form>
+  {% endif %}
+  {% if not user.can_submit %}
+  <h3>履歴</h3>
+  <ul class="timeline">
+    {% for l in report.logs %}
+    <li><small>{{ l.created_at.strftime('%Y-%m-%d %H:%M') }} {{ l.actor_email }}</small><br><strong>{{ l.action }}</strong>{% if l.detail %}<div class="pre small">{{ l.detail }}</div>{% endif %}</li>
+    {% endfor %}
+  </ul>
   {% endif %}
 </section>
 </div>
