@@ -253,6 +253,7 @@ def list_reports(request: Request, user: User = Depends(current_user), db: Sessi
         stmt = stmt.join(Organization).where(Organization.advisor_email == user.email)
     else:
         stmt = stmt.where(ActivityReport.applicant_email == user.email)
+    base_stmt = stmt
     if status:
         try:
             stmt = stmt.where(ActivityReport.status == ReportStatus(status))
@@ -262,7 +263,13 @@ def list_reports(request: Request, user: User = Depends(current_user), db: Sessi
         like = f"%{q}%"
         stmt = stmt.where(ActivityReport.content.like(like) | ActivityReport.application_no.like(like) | ActivityReport.location.like(like))
     reports = list(db.scalars(stmt))
-    return _tpl().TemplateResponse(request, "report_list.html", {"user": user, "reports": reports, "statuses": list(ReportStatus), "status": status, "q": q})
+    counts = {s: 0 for s in ReportStatus}
+    for r in db.scalars(base_stmt):
+        counts[r.status] += 1
+    return _tpl().TemplateResponse(request, "report_list.html", {
+        "user": user, "reports": reports, "statuses": list(ReportStatus), "status": status, "q": q,
+        "counts": counts, "total": sum(counts.values()),
+    })
 
 
 @router.get("/{report_id}")

@@ -18,6 +18,19 @@ from .database import init_db
 APP_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 
+_WEEKDAYS = "月火水木金土日"
+
+
+def _jdt(value, with_time: bool = True) -> str:
+    """日本語の日時表示: 2026-10-10 (土) 08:00"""
+    if value is None:
+        return ""
+    s = f"{value:%Y-%m-%d} ({_WEEKDAYS[value.weekday()]})"
+    return f"{s} {value:%H:%M}" if with_time else s
+
+
+templates.env.filters["jdt"] = _jdt
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     init_db()

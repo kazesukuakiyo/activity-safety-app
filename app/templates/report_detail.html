@@ -1,78 +1,113 @@
 {% extends "base.html" %}{% block title %}{{ report.application_no }}{% endblock %}
 {% block content %}
-<h1>{{ report.application_no }} <span class="badge s-{{ report.status.name|lower }}">{{ report.status.value }}</span>
-  {% if report.revision > 1 %}<small class="muted-text">第{{ report.revision }}版</small>{% endif %}</h1>
-{% if is_owner and report.can_resubmit %}
-<div class="alert"><strong>差戻されています。</strong><pre>{{ report.remarks }}</pre><a class="button" href="/reports/{{ report.id }}/edit">修正して再提出する</a></div>
+{% set st = report.status.value %}
+<h1>{{ report.application_no }} <span class="badge s-{{ report.status.name|lower }}">{{ st }}</span> <small>{{ report.organization.name }} / {{ report.content[:30] }}{% if report.revision > 1 %} / 第{{ report.revision }}版{% endif %}</small></h1>
+
+<div class="stepper">
+  <div class="step done">提出</div>
+  {% if report.requires_precheck %}
+    <div class="step {% if st == '未確認' %}current{% elif st in ('確認済','完了') %}done{% elif st == '差戻し' %}danger{% endif %}">職員の確認</div>
+    <div class="step {% if st == '確認済' %}done{% elif st == '差戻し' %}danger{% endif %}">{{ '差戻し' if st == '差戻し' else '確認済' }}</div>
+  {% else %}
+    <div class="step done">受付完了</div>
+  {% endif %}
+  <div class="step {% if st == '完了' %}done{% elif st == '中止' %}danger{% endif %}">{{ '中止' if st == '中止' else '活動終了' }}</div>
+</div>
+
+{% if is_owner %}
+  {% if st == '差戻し' %}
+  <div class="banner danger"><span class="icon">↩</span><div><strong>差戻されています。修正して再提出してください</strong><pre>{{ report.remarks }}</pre><p><a class="btn" href="/reports/{{ report.id }}/edit">修正して再提出する</a></p></div></div>
+  {% elif st == '未確認' %}
+  <div class="banner warn"><span class="icon">⏳</span><div><strong>職員が確認中です</strong><p>確認が終わると通知が届きます。予定や参加者の変更があれば担当部署へ連絡してください。</p></div></div>
+  {% elif st == '確認済' %}
+  <div class="banner ok"><span class="icon">✔</span><div><strong>{{ '確認済です。予定どおり活動できます' if report.requires_precheck else '受付完了です' }}</strong>{% if report.remarks %}<p><strong>大学からの指示:</strong> {{ report.remarks }}</p>{% endif %}</div></div>
+  {% endif %}
+{% elif user.can_edit_reports and st == '未確認' %}
+  <div class="banner warn"><span class="icon">⏳</span><div><strong>事前確認待ちです</strong><p>内容を確認して、右側の「確認済にする」または「差戻す」を押してください。</p></div></div>
 {% endif %}
+
 <div class="grid2">
 <section class="card">
   <h2>届出内容</h2>
   <dl>
-    <dt>所属する団体</dt><dd>{{ report.organization.name }}{% if not user.can_submit %} <small>(団体ID: {{ report.org_code }})</small>{% endif %}</dd>
+    <dt>団体</dt><dd>{{ report.organization.name }}{% if not user.can_submit %} <small class="help">団体ID {{ report.org_code }}</small>{% endif %}</dd>
     <dt>活動内容</dt><dd class="pre">{{ report.content }}</dd>
-    <dt>期間</dt><dd>{{ report.start_at.strftime('%Y-%m-%d %H:%M') }} ～ {{ report.end_at.strftime('%Y-%m-%d %H:%M') }}</dd>
-    <dt>活動場所・宿泊先</dt><dd class="pre">{{ report.location }}</dd>
-    <dt>参加予定人数</dt><dd>{{ report.participants_count }} 名 <small>(名簿 {{ report.participants|length }} 名)</small></dd>
-    <dt>現地責任者</dt><dd>{{ report.leader_name }} / <a href="tel:{{ report.leader_phone }}">{{ report.leader_phone }}</a> / {{ report.leader_email }}</dd>
-    <dt>事前確認対象</dt><dd>{{ 'はい' if report.requires_precheck else 'いいえ' }}</dd>
+    <dt>期間</dt><dd>{{ report.start_at|jdt }} ～ {{ report.end_at|jdt }}</dd>
+    <dt>場所・宿泊先</dt><dd class="pre">{{ report.location }}</dd>
+    <dt>参加予定人数</dt><dd>{{ report.participants_count }} 名 <small class="help">名簿 {{ report.participants|length }} 名</small></dd>
+    <dt>現地責任者</dt><dd>{{ report.leader_name }}<br><a href="tel:{{ report.leader_phone }}">{{ report.leader_phone }}</a> / <a href="mailto:{{ report.leader_email }}">{{ report.leader_email }}</a></dd>
+    <dt>事前確認対象</dt><dd>{% if report.requires_precheck %}<span class="tag target">対象</span> 宿泊・海外・運転・危険を伴う活動{% else %}いいえ (通常の学外活動){% endif %}</dd>
+    {% if report.requires_precheck %}
     <dt>行程等の概要</dt><dd class="pre">{{ report.itinerary_summary or '－' }}</dd>
-    <dt>添付書類確認</dt><dd>{{ '行程等を添付した' if report.declared_itinerary else '－' }}</dd>
+    <dt>添付書類確認</dt><dd>{{ '行程表・活動計画書等を添付した (自己申告)' if report.declared_itinerary else '－' }}</dd>
+    {% endif %}
     <dt>大学への連絡事項</dt><dd class="pre">{{ report.notes_to_university or '－' }}</dd>
   </dl>
   <h3>添付ファイル</h3>
-  <ul>
+  <ul class="attach-list">
   {% for a in report.attachments %}
-    <li>[{{ a.kind.value }}] <a href="/reports/{{ report.id }}/attachments/{{ a.id }}">{{ a.original_name }}</a> <small>{{ (a.size_bytes/1024)|round(1) }} KB</small></li>
-  {% else %}<li>なし</li>{% endfor %}
+    <li>📎 <a href="/reports/{{ report.id }}/attachments/{{ a.id }}">{{ a.original_name }}</a> <small class="help">[{{ a.kind.value }}] {{ (a.size_bytes/1024)|round(1) }} KB</small></li>
+  {% else %}<li class="help">なし</li>{% endfor %}
   </ul>
 
-  <h3>参加者名簿 <small>{{ report.participants|length }} 名</small></h3>
+  <h3>参加者名簿 <small class="help">{{ report.participants|length }} 名</small></h3>
   {% if show_participants %}
     {% if report.participants %}
-    <table class="compact">
+    <div class="table-wrap"><table class="compact">
       <thead><tr><th>学籍番号</th><th>氏名</th><th>所属</th><th>学年</th></tr></thead>
       <tbody>{% for p in report.participants %}<tr><td>{{ p.student_no }}</td><td>{{ p.name }}</td><td>{{ p.department }}</td><td>{{ p.grade }}</td></tr>{% endfor %}</tbody>
-    </table>
-    {% if user.can_view_rosters %}<p><a href="/reports/{{ report.id }}/participants.csv">CSV でダウンロード</a></p>{% endif %}
-    {% else %}<p class="muted-text">登録なし</p>{% endif %}
+    </table></div>
+    {% if user.can_view_rosters %}<p><a href="/reports/{{ report.id }}/participants.csv" class="btn secondary small">CSV でダウンロード</a></p>{% endif %}
+    {% else %}<p class="help">登録なし</p>{% endif %}
   {% else %}
-    <p class="muted-text">参加者名簿は指定職員・管理職のみ閲覧できます。</p>
+    <p class="help">参加者名簿は指定職員・管理職のみ閲覧できます。</p>
   {% endif %}
 </section>
 
 <section class="card">
+  {% if user.can_edit_reports %}
+  <h2>確認と状況の更新</h2>
+  <form method="post" action="/reports/{{ report.id }}/status" id="status-form">
+    <div class="field"><label>備考 <span class="help">差戻し理由、帰着連絡などの個別指示。確認済・差戻しの通知本文に含まれます</span></label>
+      <textarea name="remarks" id="remarks" rows="3">{{ report.remarks }}</textarea></div>
+    <div class="actions">
+      {% if st != '確認済' %}<button type="submit" name="status" value="確認済" class="btn ok">確認済にする</button>{% endif %}
+      {% if st != '差戻し' %}<button type="submit" name="status" value="差戻し" class="btn danger" id="btn-return">差戻す</button>{% endif %}
+      <span class="help">その他: 
+        {% for s in statuses if s.value in ('中止','完了','未確認') and s != report.status %}<button type="submit" name="status" value="{{ s.value }}" class="link">{{ s.value }}にする</button>{% if not loop.last %} / {% endif %}{% endfor %}
+      </span>
+    </div>
+    <p class="note">「確認済」「差戻し」に変えたときだけ申請者へ通知します。同じ状況での再保存では通知しません。</p>
+  </form>
+  <script>
+    document.getElementById('btn-return') && document.getElementById('btn-return').addEventListener('click', function (e) {
+      if (!document.getElementById('remarks').value.trim()) { e.preventDefault(); alert('差戻す場合は、備考に理由を書いてください (申請者への通知に含まれます)。'); document.getElementById('remarks').focus(); }
+    });
+  </script>
+  <hr style="border:none;border-top:1px solid var(--line);margin:18px 0">
+  {% endif %}
   <h2>管理情報</h2>
   <dl>
-    <dt>申請者</dt><dd>{{ report.applicant_name }} &lt;{{ report.applicant_email }}&gt;</dd>
+    <dt>申請者</dt><dd>{{ report.applicant_name }}<br><small>{{ report.applicant_email }}</small></dd>
     {% if not user.can_submit %}
-    <dt>申請者確認</dt><dd><span class="badge c-{{ report.applicant_check.name|lower }}">{{ report.applicant_check.value }}</span></dd>
-    <dt>作成元</dt><dd>{{ report.source }}</dd>
+    <dt>申請者確認</dt><dd><span class="badge c-{{ report.applicant_check.name|lower }}">{{ report.applicant_check.value }}</span> <small class="help">{% if report.applicant_check.value == '一致' %}団体台帳の代表者・副代表者と一致{% elif report.applicant_check.value == '要確認' %}団体台帳の代表者・副代表者と不一致{% else %}団体台帳に代表者メールが未登録{% endif %}</small></dd>
     <dt>不足検査</dt><dd class="pre">{{ report.missing_items or '不足なし' }}</dd>
+    <dt>作成元</dt><dd>{{ report.source }}</dd>
     {% endif %}
-    <dt>備考</dt><dd class="pre">{{ report.remarks or '－' }}</dd>
+    {% if not user.can_edit_reports %}<dt>備考</dt><dd class="pre">{{ report.remarks or '－' }}</dd>{% endif %}
     <dt>初回提出</dt><dd>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
-    <dt>最終提出</dt><dd>{{ report.submitted_at.strftime('%Y-%m-%d %H:%M') }} (第{{ report.revision }}版)</dd>
-    <dt>最終更新</dt><dd>{{ report.updated_at.strftime('%Y-%m-%d %H:%M') }} {{ report.updated_by }}</dd>
+    <dt>最終提出</dt><dd>{{ report.submitted_at.strftime('%Y-%m-%d %H:%M') }} <small class="help">第{{ report.revision }}版</small></dd>
+    <dt>最終更新</dt><dd>{{ report.updated_at.strftime('%Y-%m-%d %H:%M') }} <small class="help">{{ report.updated_by }}</small></dd>
   </dl>
-  {% if user.can_edit_reports %}
-  <h3>状況の更新</h3>
-  <form method="post" action="/reports/{{ report.id }}/status">
-    <label>状況 <select name="status">{% for s in statuses %}<option value="{{ s.value }}" {% if s == report.status %}selected{% endif %}>{{ s.value }}</option>{% endfor %}</select></label>
-    <label>備考 <small>差戻し理由、申し送り、帰着連絡などの個別指示</small><textarea name="remarks" rows="4">{{ report.remarks }}</textarea></label>
-    <button type="submit" class="primary">更新する</button>
-    <p class="note">「確認済」「差戻し」に変更したときだけ申請者へ通知します。同じ状況での再保存では通知しません。</p>
-  </form>
-  {% endif %}
   {% if not user.can_submit %}
   <h3>履歴</h3>
   <ul class="timeline">
-    {% for l in report.logs %}
-    <li><small>{{ l.created_at.strftime('%Y-%m-%d %H:%M') }} {{ l.actor_email }}</small><br><strong>{{ l.action }}</strong>{% if l.detail %}<div class="pre small">{{ l.detail }}</div>{% endif %}</li>
+    {% for l in report.logs|reverse %}
+    <li><small class="help">{{ l.created_at.strftime('%Y-%m-%d %H:%M') }} · {{ l.actor_email }}</small><br><strong>{{ l.action }}</strong>{% if l.detail %}<div class="pre small help">{{ l.detail }}</div>{% endif %}</li>
     {% endfor %}
   </ul>
   {% endif %}
 </section>
 </div>
-<p><a href="/reports">← 一覧へ</a></p>
+<p><a href="{{ '/dashboard' if user.role.value in ('staff','manager') else '/reports' }}">← {{ 'ダッシュボード' if user.role.value in ('staff','manager') else '一覧' }}へ戻る</a></p>
 {% endblock %}

@@ -1,12 +1,13 @@
 {% extends "base.html" %}{% block title %}通知{% endblock %}
 {% block content %}
-<h1>通知 (送信箱)</h1>
-<p class="note">ローカル検証ではメールを送らず、送信されるはずの通知をここに記録します。</p>
+<h1>通知 <small>送信箱</small></h1>
+<p class="note">ローカル検証ではメールを送らず、送信されるはずの通知をここに記録します。本番ではメールで届きます。</p>
+{% set kinds = {'receipt': '受付', 'missing': '差戻し (不足)', 'result': '確認結果', 'staff_request': '確認依頼', 'advisor_share': '顧問へ共有', 'applicant_check': '申請者確認'} %}
 {% for n in items %}
-<details class="card mail">
-  <summary><span class="tag">{{ n.kind }}</span> <strong>{{ n.subject }}</strong> <small>→ {{ n.to_email }} / {{ n.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></summary>
+<details class="card mail" {% if loop.first %}open{% endif %}>
+  <summary><span class="tag">{{ kinds.get(n.kind, n.kind) }}</span> <strong>{{ n.subject }}</strong> <small class="help">→ {{ n.to_email }} · {{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</small></summary>
   <pre>{{ n.body }}</pre>
-  {% if n.report_id %}<a href="/reports/{{ n.report_id }}">活動届を開く</a>{% endif %}
+  {% if n.report_id %}<a href="/reports/{{ n.report_id }}" class="btn secondary small">活動届を開く</a>{% endif %}
 </details>
-{% else %}<p class="empty">通知はありません</p>{% endfor %}
+{% else %}<div class="card empty">通知はありません</div>{% endfor %}
 {% endblock %}

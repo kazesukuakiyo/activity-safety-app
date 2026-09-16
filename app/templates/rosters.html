@@ -1,18 +1,24 @@
 {% extends "base.html" %}{% block title %}年度部員名簿{% endblock %}
 {% block content %}
-<h1>年度部員名簿 <small class="muted-text">{{ fiscal_year }} 年度</small></h1>
-<p class="note">年度初めに年1回登録してください。加入・退部があれば同じ画面で更新できます。活動ごとの参加者名簿は活動届で別途提出するもので、この年度名簿があっても省略できません。記載できるのは学籍番号・氏名・所属・学年だけです。</p>
+<h1>年度部員名簿 <small>{{ fiscal_year }} 年度</small></h1>
+<div class="banner info"><span class="icon">ℹ</span><div>
+  <strong>年度初めに 1 回登録してください。加入・退部があれば同じ画面で更新できます</strong>
+  <p>登録しておくと、活動届で参加者をチェックするだけで名簿が作れます。ただし活動ごとの参加者名簿は年度名簿があっても省略できません。記載できるのは学籍番号・氏名・所属・学年だけです。</p>
+</div></div>
 <form method="get" class="filter"><label class="inline-label">年度 <input type="number" name="fiscal_year" value="{{ fiscal_year }}"></label><button type="submit">表示</button></form>
 {% if user.can_submit and not orgs %}
-<div class="card">あなたが代表者・副代表者として登録されている団体はありません。団体台帳の登録は担当部署へ連絡してください。</div>
-{% endif %}
-<table>
+<div class="card empty">あなたが代表者・副代表者として登録されている団体はありません。団体台帳の登録は担当部署へ連絡してください。</div>
+{% else %}
+<div class="table-wrap">
+<table class="responsive">
 <thead><tr><th>団体</th><th>登録人数</th><th></th></tr></thead>
 <tbody>
 {% for o in orgs %}
-<tr class="{% if not o.is_active %}muted{% endif %}"><td>{{ o.name }}{% if not o.is_active %} <small>(休止)</small>{% endif %}</td>
-  <td>{{ counts.get(o.id, 0) }} 名</td>
-  <td><a href="/rosters/{{ o.id }}?fiscal_year={{ fiscal_year }}">{{ '登録・更新' if user.can_submit else '閲覧' }}</a></td></tr>
+<tr class="{% if not o.is_active %}muted{% endif %}"><td data-label="団体"><strong>{{ o.name }}</strong>{% if not o.is_active %} <small class="tag">休止</small>{% endif %}</td>
+  <td data-label="登録人数">{% if counts.get(o.id, 0) %}{{ counts.get(o.id, 0) }} 名{% else %}<span class="help">未登録</span>{% endif %}</td>
+  <td><a href="/rosters/{{ o.id }}?fiscal_year={{ fiscal_year }}" class="btn secondary small">{{ ('更新する' if counts.get(o.id, 0) else '登録する') if user.can_submit else '閲覧' }}</a></td></tr>
 {% else %}<tr><td colspan="3" class="empty">団体がありません</td></tr>{% endfor %}
 </tbody></table>
+</div>
+{% endif %}
 {% endblock %}

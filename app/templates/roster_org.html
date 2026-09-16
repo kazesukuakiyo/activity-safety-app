@@ -1,30 +1,60 @@
 {% extends "base.html" %}{% block title %}{{ org.name }} 年度部員名簿{% endblock %}
 {% block content %}
-<h1>{{ org.name }} <small class="muted-text">{{ fiscal_year }} 年度 部員名簿</small></h1>
-{% if error %}<div class="alert"><strong>形式に誤りがあります</strong><pre>{{ error }}</pre></div>{% endif %}
+<h1>{{ org.name }} <small>{{ fiscal_year }} 年度 部員名簿</small></h1>
+{% if error %}<div class="banner danger"><span class="icon">⚠</span><div><strong>形式に誤りがあります。保存されていません</strong><pre>{{ error }}</pre></div></div>{% endif %}
 <div class="grid2">
-<section class="card">
-  <h2>登録済み <small>{{ members|length }} 名</small></h2>
-  {% if members %}
-  <table class="compact">
-    <thead><tr><th>学籍番号</th><th>氏名</th><th>所属</th><th>学年</th></tr></thead>
-    <tbody>{% for m in members %}<tr><td>{{ m.student_no }}</td><td>{{ m.name }}</td><td>{{ m.department }}</td><td>{{ m.grade }}</td></tr>{% endfor %}</tbody>
-  </table>
-  <p><a href="/rosters/{{ org.id }}/members.csv?fiscal_year={{ fiscal_year }}">CSV でダウンロード</a></p>
-  {% else %}<p class="muted-text">まだ登録されていません。</p>{% endif %}
-</section>
 {% if can_edit %}
 <section class="card">
-  <h2>登録・更新</h2>
-  <p class="note">Excel で「学籍番号・氏名・所属・学年」の 4 列を選んでコピーし、下に貼り付けて保存してください。1 行 1 人です。保存すると、この年度の名簿は貼り付けた内容に丸ごと置き換わります (加入・退部の反映もこの方法で行います)。</p>
+  <h2>{{ '更新する' if members else '登録する' }}</h2>
+  <ol class="note" style="padding-left:1.4em;margin:0 0 8px">
+    <li>Excel の名簿で「学籍番号・氏名・所属・学年」の 4 列を範囲選択してコピー</li>
+    <li>下の欄に貼り付け (1 行 1 人。見出し行は入っていても構いません)</li>
+    <li>「保存する」。この年度の名簿は貼り付けた内容に丸ごと置き換わります</li>
+  </ol>
   <form method="post" action="/rosters/{{ org.id }}">
     <input type="hidden" name="fiscal_year" value="{{ fiscal_year }}">
-    <textarea name="roster_text" rows="14" placeholder="2024001	山田 太郎	工学部	2
-2024002	佐藤 花子	文学部	1">{{ roster_text }}</textarea>
-    <button type="submit" class="primary">保存する</button>
+    <textarea name="roster_text" id="roster_text" class="mono" rows="14" placeholder="2024001	山田 太郎	工学部	2&#10;2024002	佐藤 花子	文学部	1">{{ roster_text }}</textarea>
+    <div id="roster-parse" class="parse-result" hidden></div>
+    <div class="actions"><button type="submit" class="primary">保存する</button><a href="/rosters?fiscal_year={{ fiscal_year }}" class="cancel">戻る</a></div>
   </form>
+  <script>
+  (function () {
+    const box = document.getElementById('roster_text'), out = document.getElementById('roster-parse');
+    function parse(text) {
+      const rows = [], errors = [], seen = new Set();
+      text.split(/\r?\n/).forEach((raw, i) => {
+        const line = raw.trim(); if (!line) return;
+        const cols = line.split(/\t|,|、|，/).map(c => c.trim());
+        while (cols.length && cols[cols.length - 1] === '') cols.pop();
+        if (cols.slice(0, 4).join() === '学籍番号,氏名,所属,学年') return;
+        if (cols.length !== 4) { errors.push((i + 1) + ' 行目: 列数が ' + cols.length + ' です (4 列にしてください)'); return; }
+        if (cols.some(c => c === '')) { errors.push((i + 1) + ' 行目: 空欄があります'); return; }
+        if (seen.has(cols[0])) { errors.push((i + 1) + ' 行目: 学籍番号 ' + cols[0] + ' が重複しています'); return; }
+        seen.add(cols[0]); rows.push(cols);
+      });
+      return { rows, errors };
+    }
+    function update() {
+      if (!box.value.trim()) { out.hidden = true; return; }
+      const { rows, errors } = parse(box.value); out.hidden = false;
+      if (errors.length) { out.className = 'parse-result err'; out.textContent = errors.join('\n'); }
+      else { out.className = 'parse-result ok'; out.textContent = rows.length + ' 名を読み取りました。保存するとこの内容に置き換わります'; }
+    }
+    box.addEventListener('input', update); update();
+  })();
+  </script>
 </section>
 {% endif %}
+<section class="card">
+  <h2>登録済み <small class="help">{{ members|length }} 名</small></h2>
+  {% if members %}
+  <div class="table-wrap"><table class="compact">
+    <thead><tr><th>学籍番号</th><th>氏名</th><th>所属</th><th>学年</th></tr></thead>
+    <tbody>{% for m in members %}<tr><td>{{ m.student_no }}</td><td>{{ m.name }}</td><td>{{ m.department }}</td><td>{{ m.grade }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p><a href="/rosters/{{ org.id }}/members.csv?fiscal_year={{ fiscal_year }}" class="btn secondary small">CSV でダウンロード</a></p>
+  {% else %}<p class="help">まだ登録されていません。</p>{% endif %}
+</section>
 </div>
-<p><a href="/rosters?fiscal_year={{ fiscal_year }}">← 団体一覧へ</a></p>
+{% if not can_edit %}<p><a href="/rosters?fiscal_year={{ fiscal_year }}">← 団体一覧へ</a></p>{% endif %}
 {% endblock %}

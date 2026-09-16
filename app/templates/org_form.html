@@ -1,15 +1,17 @@
 {% extends "base.html" %}{% block title %}団体の編集{% endblock %}
 {% block content %}
 <h1>{{ '団体の編集' if org else '団体の追加' }}</h1>
-{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+{% if error %}<div class="banner danger"><span class="icon">⚠</span><div><strong>{{ error }}</strong></div></div>{% endif %}
 <form method="post" action="/orgs/save" class="card">
   {% if org %}<input type="hidden" name="org_id" value="{{ org.id }}">{% endif %}
-  <label>団体名 <span class="req">必須</span><small>学生向け表示名</small><input type="text" name="name" value="{{ org.name if org else '' }}" required></label>
-  <label>団体ID <span class="req">必須</span><small>改称に影響されない不変キー</small><input type="text" name="org_code" value="{{ org.org_code if org else '' }}" required></label>
-  <label>代表者メール<input type="email" name="rep_email" value="{{ org.rep_email if org else '' }}"></label>
-  <label>副代表者メール <small>任意</small><input type="email" name="vice_rep_email" value="{{ org.vice_rep_email if org else '' }}"></label>
-  <label>顧問メール<input type="email" name="advisor_email" value="{{ org.advisor_email if org else '' }}"></label>
-  <label class="radio"><input type="checkbox" name="is_active" {% if not org or org.is_active %}checked{% endif %}> 有効 (フォームの選択肢に表示する)</label>
-  <button type="submit" class="primary">保存</button> <a href="/orgs">キャンセル</a>
+  <div class="field"><label>団体名 <span class="req">必須</span></label><span class="help">学生に表示される名前</span><input type="text" name="name" value="{{ org.name if org else '' }}" required></div>
+  <div class="field"><label>団体ID <span class="req">必須</span></label><span class="help">改称しても変わらない管理用の番号。例: ORG-0012</span><input type="text" name="org_code" value="{{ org.org_code if org else '' }}" required></div>
+  <div class="row">
+    <div class="field"><label>代表者メール</label><span class="help">申請者の照合と名簿登録の権限に使用</span><input type="email" name="rep_email" value="{{ org.rep_email if org else '' }}"></div>
+    <div class="field"><label>副代表者メール <span class="opt">任意</span></label><input type="email" name="vice_rep_email" value="{{ org.vice_rep_email if org else '' }}"></div>
+    <div class="field"><label>顧問メール</label><span class="help">事前確認対象の届を共有する宛先</span><input type="email" name="advisor_email" value="{{ org.advisor_email if org else '' }}"></div>
+  </div>
+  <label class="radio" style="margin-top:12px"><input type="checkbox" name="is_active" {% if not org or org.is_active %}checked{% endif %}> 有効 (学生のフォームの選択肢に表示する)</label>
+  <div class="actions"><button type="submit" class="primary">保存</button><a href="/orgs" class="cancel">キャンセル</a></div>
 </form>
 {% endblock %}

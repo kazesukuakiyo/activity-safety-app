@@ -1,74 +1,80 @@
 {% extends "base.html" %}{% block title %}ダッシュボード{% endblock %}
-{% macro report_table(rows, show_status=True) %}
-<table>
+{% macro report_table(rows, show_status=True, empty='該当なし') %}
+{% if rows %}
+<div class="table-wrap">
+<table class="responsive">
 <thead><tr><th>申請番号</th><th>団体</th><th>活動内容</th><th>期間</th><th>場所</th><th>現地責任者</th><th>人数</th>{% if show_status %}<th>状況</th>{% endif %}</tr></thead>
 <tbody>
 {% for r in rows %}
 <tr>
-  <td><a href="/reports/{{ r.id }}">{{ r.application_no }}</a>{% if r.requires_precheck %} <small class="tag">対象</small>{% endif %}</td>
-  <td>{{ r.organization.name }}</td>
-  <td>{{ r.content[:30] }}</td>
-  <td class="nowrap">{{ r.start_at.strftime('%m/%d %H:%M') }}<br>～{{ r.end_at.strftime('%m/%d %H:%M') }}</td>
-  <td>{{ r.location[:40] }}</td>
-  <td class="nowrap">{{ r.leader_name }}<br><a href="tel:{{ r.leader_phone }}">{{ r.leader_phone }}</a></td>
-  <td>{{ r.participants_count }} <small>(名簿 {{ r.participants|length }})</small></td>
-  {% if show_status %}<td><span class="badge s-{{ r.status.name|lower }}">{{ r.status.value }}</span></td>{% endif %}
+  <td data-label="申請番号"><a href="/reports/{{ r.id }}"><strong>{{ r.application_no }}</strong></a>{% if r.requires_precheck %} <span class="tag target">対象</span>{% endif %}</td>
+  <td data-label="団体">{{ r.organization.name }}</td>
+  <td data-label="活動内容">{{ r.content[:30] }}</td>
+  <td data-label="期間" class="nowrap">{{ r.start_at.strftime('%m/%d %H:%M') }}<br>～{{ r.end_at.strftime('%m/%d %H:%M') }}</td>
+  <td data-label="場所">{{ r.location[:40] }}</td>
+  <td data-label="現地責任者" class="nowrap">{{ r.leader_name }}<br><a href="tel:{{ r.leader_phone }}">📞 {{ r.leader_phone }}</a></td>
+  <td data-label="人数">{{ r.participants_count }} <small class="help">名簿 {{ r.participants|length }}</small></td>
+  {% if show_status %}<td data-label="状況"><span class="badge s-{{ r.status.name|lower }}">{{ r.status.value }}</span></td>{% endif %}
 </tr>
-{% else %}<tr><td colspan="8" class="empty">該当なし</td></tr>{% endfor %}
+{% endfor %}
 </tbody></table>
+</div>
+{% else %}<p class="empty">{{ empty }}</p>{% endif %}
 {% endmacro %}
 {% block content %}
-<h1>ダッシュボード <small class="muted-text">{{ now.strftime('%Y-%m-%d %H:%M') }} 時点</small></h1>
+<h1>ダッシュボード <small>{{ now.strftime('%Y-%m-%d %H:%M') }} 時点</small></h1>
 
 <div class="stats">
   <a class="stat s-ongoing" href="#ongoing"><span class="num">{{ ongoing|length }}</span><span>いま学外で活動中</span></a>
-  <a class="stat" href="#upcoming"><span class="num">{{ upcoming|length }}</span><span>7日以内に開始</span></a>
-  <a class="stat s-unconfirmed" href="#unconfirmed"><span class="num">{{ unconfirmed|length }}</span><span>未確認 (要事前確認)</span></a>
+  <a class="stat" href="#upcoming"><span class="num">{{ upcoming|length }}</span><span>7 日以内に開始</span></a>
+  <a class="stat s-unconfirmed" href="#unconfirmed"><span class="num">{{ unconfirmed|length }}</span><span>確認待ち</span></a>
   <a class="stat s-returned" href="#returned"><span class="num">{{ returned|length }}</span><span>差戻し中</span></a>
-  <a class="stat" href="#review"><span class="num">{{ needs_review|length }}</span><span>申請者 要確認・照合不可</span></a>
+  <a class="stat" href="#review"><span class="num">{{ needs_review|length }}</span><span>申請者の照合に注意</span></a>
 </div>
 
 <section class="card">
-  <h2>検索 <small>有事の初動: 場所・団体・責任者名や日付から探す</small></h2>
+  <h2>探す <small class="help">有事のとき: 場所・団体・責任者名・日付から</small></h2>
   <form method="get" class="filter">
     <input type="text" name="q" placeholder="場所・活動内容・団体名・現地責任者・申請番号" value="{{ q }}">
-    <input type="date" name="on" value="{{ on }}" title="この日に活動中のもの">
+    <input type="date" name="on" value="{{ on }}" title="この日に活動中のもの" style="max-width:180px">
     <button type="submit">検索</button>
     {% if q or on %}<a href="/dashboard">クリア</a>{% endif %}
   </form>
-  {% if search_results is not none %}{{ report_table(search_results) }}{% endif %}
+  {% if search_results is not none %}{{ report_table(search_results, empty='条件に合う活動届はありません') }}{% endif %}
 </section>
 
 <section class="card" id="ongoing">
-  <h2>いま学外で活動中 <small>開始日時を過ぎ、終了日時前のもの</small></h2>
-  {{ report_table(ongoing) }}
-</section>
-
-<section class="card" id="upcoming">
-  <h2>7日以内に開始する活動</h2>
-  {{ report_table(upcoming) }}
+  <h2>いま学外で活動中 <small class="help">開始日時を過ぎ、終了日時前のもの</small></h2>
+  {{ report_table(ongoing, empty='現在、学外で活動中の団体はありません') }}
 </section>
 
 <section class="card" id="unconfirmed">
-  <h2>未確認 (職員の事前確認待ち)</h2>
-  {{ report_table(unconfirmed, show_status=False) }}
+  <h2>確認待ち <small class="help">事前確認対象で、職員の確認が終わっていないもの</small></h2>
+  {{ report_table(unconfirmed, show_status=False, empty='確認待ちはありません') }}
+</section>
+
+<section class="card" id="upcoming">
+  <h2>7 日以内に開始する活動</h2>
+  {{ report_table(upcoming, empty='7 日以内に始まる活動はありません') }}
 </section>
 
 <section class="card" id="returned">
-  <h2>差戻し中 (学生の再提出待ち)</h2>
-  {{ report_table(returned, show_status=False) }}
+  <h2>差戻し中 <small class="help">学生の再提出待ち</small></h2>
+  {{ report_table(returned, show_status=False, empty='差戻し中はありません') }}
 </section>
 
 <section class="card" id="review">
-  <h2>申請者確認が「要確認」「照合不可」の届</h2>
-  <table>
+  <h2>申請者確認が「要確認」「照合不可」の届 <small class="help">団体台帳の代表者と申請者が一致しないもの</small></h2>
+  {% if needs_review %}
+  <div class="table-wrap"><table class="responsive">
     <thead><tr><th>申請番号</th><th>団体</th><th>申請者</th><th>判定</th><th>状況</th></tr></thead>
     <tbody>
     {% for r in needs_review %}
-    <tr><td><a href="/reports/{{ r.id }}">{{ r.application_no }}</a></td><td>{{ r.organization.name }}</td><td>{{ r.applicant_name }} &lt;{{ r.applicant_email }}&gt;</td>
-      <td><span class="badge c-{{ r.applicant_check.name|lower }}">{{ r.applicant_check.value }}</span></td><td><span class="badge s-{{ r.status.name|lower }}">{{ r.status.value }}</span></td></tr>
-    {% else %}<tr><td colspan="5" class="empty">該当なし</td></tr>{% endfor %}
+    <tr><td data-label="申請番号"><a href="/reports/{{ r.id }}"><strong>{{ r.application_no }}</strong></a></td><td data-label="団体">{{ r.organization.name }}</td><td data-label="申請者">{{ r.applicant_name }}<br><small>{{ r.applicant_email }}</small></td>
+      <td data-label="判定"><span class="badge c-{{ r.applicant_check.name|lower }}">{{ r.applicant_check.value }}</span></td><td data-label="状況"><span class="badge s-{{ r.status.name|lower }}">{{ r.status.value }}</span></td></tr>
+    {% endfor %}
     </tbody>
-  </table>
+  </table></div>
+  {% else %}<p class="empty">該当なし</p>{% endif %}
 </section>
 {% endblock %}

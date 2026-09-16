@@ -1,12 +1,15 @@
 {% extends "base.html" %}{% block title %}団体台帳{% endblock %}
 {% block content %}
-<h1>団体台帳</h1>
-<p><a href="/orgs/new" class="button">団体を追加</a></p>
-<table>
-<thead><tr><th>団体名</th><th>団体ID</th><th>代表者メール</th><th>副代表者メール</th><th>顧問メール</th><th>有効</th><th></th></tr></thead>
+<h1>団体台帳 <small>団体名・団体ID・代表者・顧問の正本</small></h1>
+<p class="note">学生はここに登録された団体名から選んで届を出します。代表者・副代表者メールは申請者の照合と年度部員名簿の登録権限に使われ、顧問メールは通知先になります。</p>
+<p><a href="/orgs/new" class="btn">団体を追加</a></p>
+<div class="table-wrap">
+<table class="responsive">
+<thead><tr><th>団体名</th><th>団体ID</th><th>代表者メール</th><th>副代表者メール</th><th>顧問メール</th><th>状態</th><th></th></tr></thead>
 <tbody>
 {% for o in orgs %}
-<tr class="{% if not o.is_active %}muted{% endif %}"><td>{{ o.name }}</td><td>{{ o.org_code }}</td><td>{{ o.rep_email }}</td><td>{{ o.vice_rep_email }}</td><td>{{ o.advisor_email }}</td><td>{{ '有効' if o.is_active else '休止' }}</td><td><a href="/orgs/{{ o.id }}/edit">編集</a></td></tr>
+<tr class="{% if not o.is_active %}muted{% endif %}"><td data-label="団体名"><strong>{{ o.name }}</strong></td><td data-label="団体ID">{{ o.org_code }}</td><td data-label="代表者">{{ o.rep_email or '－' }}</td><td data-label="副代表者">{{ o.vice_rep_email or '－' }}</td><td data-label="顧問">{{ o.advisor_email or '－' }}</td><td data-label="状態">{% if o.is_active %}<span class="badge s-confirmed">有効</span>{% else %}<span class="badge s-cancelled">休止</span>{% endif %}</td><td><a href="/orgs/{{ o.id }}/edit" class="btn secondary small">編集</a></td></tr>
 {% endfor %}
 </tbody></table>
+</div>
 {% endblock %}

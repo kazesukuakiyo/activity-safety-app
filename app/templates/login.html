@@ -1,11 +1,24 @@
 {% extends "base.html" %}{% block title %}ログイン{% endblock %}
 {% block content %}
-<h1>ログイン (ローカル検証用)</h1>
-<p class="note">本番では Entra ID でログインします。ここでは検証のため利用者を選んでログインします。</p>
+<h1>ログイン <small>ローカル検証用</small></h1>
+<p class="note">本番では大学の Entra ID アカウントでログインします。ここでは検証のため、役割ごとに用意した利用者を選んでログインします。</p>
 <form method="post" action="/auth/login" class="card">
   <input type="hidden" name="next" value="{{ next }}">
-  {% for u in users %}
-  <label class="radio"><input type="radio" name="email" value="{{ u.email }}" {% if loop.first %}checked{% endif %}> {{ u.name }} <small>[{{ u.role_label }}] {{ u.email }}</small></label>
+  {% set groups = [
+    ('student', '学生・団体代表者', '活動届の提出、年度部員名簿の登録、自分の届の確認'),
+    ('advisor', '顧問', '担当団体の活動届の閲覧 (名簿は見られない)'),
+    ('staff', '指定職員', 'ダッシュボード、全件の確認・状況更新・差戻し、名簿の閲覧、団体台帳'),
+    ('manager', '管理職・危機管理担当', '全件と名簿の閲覧のみ'),
+    ('sysadmin', 'システム保守担当', '団体台帳の保守 (名簿は見られない)'),
+  ] %}
+  {% for role, title, desc in groups %}
+  <div class="login-group">
+    <h2>{{ title }} <small>— {{ desc }}</small></h2>
+    {% for u in users if u.role.value == role %}
+    <label><input type="radio" name="email" value="{{ u.email }}" {% if loop.first and role == 'student' %}checked{% endif %}>
+      <span><strong>{{ u.name }}</strong><small>{{ u.email }}</small></span></label>
+    {% endfor %}
+  </div>
   {% endfor %}
   <button type="submit" class="primary">ログイン</button>
 </form>
