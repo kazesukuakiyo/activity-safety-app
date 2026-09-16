@@ -18,14 +18,19 @@ Microsoft 365 の構成要素は次のように置き換えています。
 
 ## 動かし方 (初回)
 
-Python 3.11 以上が入っている前提です。
+**Python 3.11 以上**が必要です。Mac に最初から入っている Python は古いので、先に新しいものを入れてください。
+
+- Homebrew がある場合: `brew install python@3.12`
+- 無い場合: https://www.python.org/downloads/macos/ のインストーラーを実行
+- 確認: `python3.12 --version` で `Python 3.12.x` と出れば OK
 
 ```bash
 cd activity-safety-app
 
 # 1. 仮想環境を作って有効化 (プロジェクト専用の Python 環境)
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate        # Windows は: .venv\Scripts\activate
+# → プロンプトの先頭に (.venv) が付く。以降の python / pip はこの環境を指す
 
 # 2. ライブラリを入れる
 pip install -r requirements.txt
@@ -36,6 +41,8 @@ python seed.py
 # 4. 起動
 uvicorn app.main:app --reload
 ```
+
+2 回目以降は、ターミナルを開いたら `source .venv/bin/activate` → `uvicorn app.main:app --reload` だけで起動します。
 
 ブラウザで http://localhost:8000 を開くと、ログイン画面が出ます。
 
