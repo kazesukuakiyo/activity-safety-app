@@ -49,6 +49,7 @@
     <p><small>該当する場合は「はい」を選択し、行程等の概要・行程表・参加者名簿を提出してください。</small></p>
     <label class="radio"><input type="radio" name="requires_precheck" value="yes" {% if form.get('requires_precheck')=='yes' %}checked{% endif %} required> はい (事前確認対象)</label>
     <label class="radio"><input type="radio" name="requires_precheck" value="no" {% if form.get('requires_precheck')=='no' %}checked{% endif %} required> いいえ</label>
+    <p id="precheck-no-note" class="note" hidden>通常の学外活動です。行程表・参加者名簿の提出は不要です。このまま 14 へ進んでください。</p>
   </fieldset>
 
   <fieldset id="precheck-section">
@@ -132,12 +133,16 @@
   sel.addEventListener('change', load);
   load();
 
-  // 事前確認対象「いいえ」のときは追加項目を薄く表示する (入力自体は可能)
+  // 事前確認対象で「はい」を選んだときだけ、行程等・添付・参加者名簿の欄を表示する
+  // (サーバー側の不足検査は別に行うので、画面を操作して回避しても差戻しになる)
   const radios = document.querySelectorAll('input[name=requires_precheck]');
   const sections = [document.getElementById('precheck-section'), document.getElementById('roster-section')];
+  const noteNo = document.getElementById('precheck-no-note');
   function toggle() {
     const yes = document.querySelector('input[name=requires_precheck][value=yes]').checked;
-    sections.forEach(s => s.classList.toggle('dimmed', !yes && document.querySelector('input[name=requires_precheck]:checked') !== null));
+    const no = document.querySelector('input[name=requires_precheck][value=no]').checked;
+    sections.forEach(s => s.hidden = !yes);
+    noteNo.hidden = !no;
   }
   radios.forEach(r => r.addEventListener('change', toggle));
   toggle();
