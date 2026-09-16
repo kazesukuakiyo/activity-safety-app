@@ -13,7 +13,7 @@ from ..auth.base import Role, User, current_user, forbidden
 from ..database import get_db
 from ..models import ActivityReport, Attachment, AttachmentKind, AuditLog, Member, Organization, Participant, ReportStatus
 from ..services import intake, storage
-from ..services.roster import RosterError, RosterRow, merge, parse_roster_text, rows_to_text, to_csv
+from ..services.roster import RosterError, RosterRow, merge, parse_roster_text, rows_from_fields, rows_to_text, to_csv
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -107,11 +107,17 @@ async def _apply_form(request: Request, db: Session, user: User, report: Activit
             members = db.scalars(select(Member).where(Member.id.in_(member_ids), Member.organization_id == org.id)).all()
             selected_rows = [RosterRow(m.student_no, m.name, m.department, m.grade) for m in members]
     try:
+        extra_rows = rows_from_fields(form.getlist("extra_student_no"), form.getlist("extra_name"),
+                                      form.getlist("extra_department"), form.getlist("extra_grade"))
+    except RosterError as e:
+        extra_rows = []
+        errors.append("追加の参加者の入力に誤りがあります:\n" + str(e))
+    try:
         pasted_rows = parse_roster_text(form.get("roster_text", ""))
     except RosterError as e:
         pasted_rows = []
-        errors.append("参加者名簿の形式に誤りがあります:\n" + str(e))
-    rows = merge(selected_rows, pasted_rows)
+        errors.append("参加者名簿の貼り付け内容に誤りがあります:\n" + str(e))
+    rows = merge(selected_rows, extra_rows, pasted_rows)
 
     # 添付 (サイズ検査だけ先に)
     uploads: list[tuple[AttachmentKind, str, bytes]] = []
@@ -209,8 +215,14 @@ def edit_form(report_id: int, request: Request, user: User = Depends(current_use
         "itinerary_summary": report.itinerary_summary,
         "declared_docs": ["itinerary"] if report.declared_itinerary else [],
         "notes_to_university": report.notes_to_university,
-        "roster_text": rows_to_text(report.participants),
     }
+    org = report.organization
+    member_by_no = {}
+    if org.is_representative(user.email):
+        for m in db.scalars(select(Member).where(Member.organization_id == org.id, Member.fiscal_year == _fiscal_year())):
+            member_by_no[m.student_no] = m.id
+    form["member_ids"] = [member_by_no[p.student_no] for p in report.participants if p.student_no in member_by_no]
+    form["extra_rows"] = [p for p in report.participants if p.student_no not in member_by_no]
     return _render_form(request, user, db, report=report, errors=[], form=form)
 
 

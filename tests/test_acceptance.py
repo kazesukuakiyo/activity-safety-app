@@ -116,10 +116,20 @@ def test_3d_pick_participants_from_members(client, db):
     assert client.get(f"/rosters/{tennis}/members.json").json()["allowed"] is True
     data = report_data(org_id=tennis, precheck=True, roster="2099001\t追加 花子\t文学部\t1", declared=("itinerary",))
     data["member_ids"] = [str(i) for i in member_ids]
+    data["extra_student_no"] = ["2099002", ""]      # 行入力 1 名 + 空行 (無視される)
+    data["extra_name"] = ["行入力 太郎", ""]
+    data["extra_department"] = ["理学部", ""]
+    data["extra_grade"] = ["2", ""]
     r = client.post("/reports/new", data=data, files=ITINERARY_FILE, follow_redirects=False)
     assert r.status_code == 303
     rep = get_report(db, int(r.headers["location"].split("/")[2]))
-    assert len(rep.participants) == 4   # 部員 3 名 + 貼り付け 1 名
+    assert len(rep.participants) == 5   # 部員 3 名 + 行入力 1 名 + 貼り付け 1 名
+    assert any(p.student_no == "2099002" and p.name == "行入力 太郎" for p in rep.participants)
+
+    # 行入力に空欄があればエラー
+    bad = dict(data); bad["extra_student_no"] = ["2099003"]; bad["extra_name"] = [""]; bad["extra_department"] = ["理学部"]; bad["extra_grade"] = ["1"]
+    r = client.post("/reports/new", data=bad, files=ITINERARY_FILE, follow_redirects=False)
+    assert r.status_code == 400 and "空欄" in r.text
 
     login(client, OTHER_STUDENT)
     assert client.get(f"/rosters/{tennis}/members.json").json()["allowed"] is False
@@ -231,37 +241,79 @@ def test_8_student_cannot_see_others(client, db):
     assert r.status_code == 303 and "/auth/login" in r.headers["location"]
 
 
-# シナリオ9: 年度部員名簿を登録 → 代表者だけ更新でき、職員は全団体を閲覧できる
-def test_9_annual_roster(client, db):
-    alpine = org_id(db, "ORG-0002")
+# シナリオ9: 年度部員名簿をファイルで提出 → プレビュー → 保存。他団体の名簿は見えない。職員は代理で取り込める
+def _xlsx(rows: list[list]) -> bytes:
+    import io
+
+    from openpyxl import Workbook
+
+    wb = Workbook(); ws = wb.active
+    for r in rows:
+        ws.append(r)
+    buf = io.BytesIO(); wb.save(buf)
+    return buf.getvalue()
+
+
+def test_9_annual_roster_file_submission(client, db):
+    alpine, tennis = org_id(db, "ORG-0002"), org_id(db, "ORG-0001")
     login(client, ALPINE_VICE)   # 副代表は登録できる
-    text = "2023101\t山田 一郎\t理学部\t3\n2024101\t鈴木 花子\t工学部\t2\n"
+
+    # テンプレートをダウンロードできる
+    r = client.get(f"/rosters/template.xlsx?org_id={alpine}")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("application/vnd.openxmlformats")
+
+    # アップロード → プレビュー (まだ保存されない)
+    good = _xlsx([["学籍番号", "氏名", "所属", "学年"], [2023101, "山田 一郎", "理学部", 3], ["2024101", "鈴木 花子", "工学部", "2"]])
+    r = client.post(f"/rosters/{alpine}/upload", data={"fiscal_year": "2026"}, files={"file": ("members.xlsx", good, "application/octet-stream")})
+    assert r.status_code == 200 and "取り込み内容の確認" in r.text and "山田 一郎" in r.text
+    assert db.scalars(select(Member).where(Member.organization_id == alpine, Member.fiscal_year == 2026)).all() == []
+
+    # プレビューの「この内容で保存」
+    text = "2023101\t山田 一郎\t理学部\t3\n2024101\t鈴木 花子\t工学部\t2"
     r = client.post(f"/rosters/{alpine}", data={"fiscal_year": "2026", "roster_text": text}, follow_redirects=False)
     assert r.status_code == 303
     members = db.scalars(select(Member).where(Member.organization_id == alpine, Member.fiscal_year == 2026)).all()
     assert sorted(m.student_no for m in members) == ["2023101", "2024101"]
 
-    # 更新 (退部 1 名) → 置き換わる
-    r = client.post(f"/rosters/{alpine}", data={"fiscal_year": "2026", "roster_text": "2023101\t山田 一郎\t理学部\t3\n"}, follow_redirects=False)
-    db.expire_all()
-    members = db.scalars(select(Member).where(Member.organization_id == alpine, Member.fiscal_year == 2026)).all()
-    assert [m.student_no for m in members] == ["2023101"]
+    # 5 列目 (既往歴) が入ったファイルは拒否
+    bad = _xlsx([["学籍番号", "氏名", "所属", "学年", "既往歴"], ["2023102", "田中", "理学部", "3", "喘息"]])
+    r = client.post(f"/rosters/{alpine}/upload", data={"fiscal_year": "2026"}, files={"file": ("bad.xlsx", bad, "application/octet-stream")})
+    assert r.status_code == 400 and "列数が 5" in r.text
 
-    # 5 列の行は拒否
-    r = client.post(f"/rosters/{alpine}", data={"fiscal_year": "2026", "roster_text": "2023101\t山田\t理学部\t3\t喘息\n"}, follow_redirects=False)
-    assert r.status_code == 400
+    # CSV (Shift_JIS) も取り込める
+    csv_data = "学籍番号,氏名,所属,学年\r\n2023101,山田 一郎,理学部,3\r\n".encode("cp932")
+    r = client.post(f"/rosters/{alpine}/upload", data={"fiscal_year": "2026"}, files={"file": ("members.csv", csv_data, "text/csv")})
+    assert r.status_code == 200 and "1 名" in r.text
 
-    # 代表でない学生は登録も閲覧も不可。顧問・保守も不可。職員・管理職は閲覧可
+    # 登山部の副代表はテニス部の名簿を見られない・登録できない・フォーム用 JSON も取れない
+    assert client.get(f"/rosters/{tennis}?fiscal_year=2026").status_code == 403
+    assert client.post(f"/rosters/{tennis}/upload", data={"fiscal_year": "2026"}, files={"file": ("m.xlsx", good, "application/octet-stream")}).status_code == 403
+    assert client.post(f"/rosters/{tennis}", data={"fiscal_year": "2026", "roster_text": text}, follow_redirects=False).status_code == 403
+    assert client.get(f"/rosters/{tennis}/members.json").json()["allowed"] is False
+    assert client.get(f"/rosters/{tennis}/members.csv").status_code == 403
+    html = client.get("/rosters").text
+    assert "登山部" in html and "硬式テニス部" not in html   # 一覧にも他団体は出ない
+
+    # 代表でない学生・顧問・保守は不可
     login(client, OTHER_STUDENT)
     assert client.post(f"/rosters/{alpine}", data={"fiscal_year": "2026", "roster_text": text}, follow_redirects=False).status_code == 403
     assert client.get(f"/rosters/{alpine}?fiscal_year=2026").status_code == 403
     for email in (ADVISOR, SYSADMIN):
         login(client, email)
         assert client.get("/rosters").status_code == 403
-    for email in (STAFF, MANAGER):
-        login(client, email)
-        assert "山田 一郎" in client.get(f"/rosters/{alpine}?fiscal_year=2026").text
-        assert client.get(f"/rosters/{alpine}/members.csv?fiscal_year=2026").status_code == 200
+        assert client.get(f"/rosters/{alpine}?fiscal_year=2026").status_code == 403
+
+    # 職員は受領済みの名簿を代理で取り込める。管理職は閲覧のみ
+    login(client, STAFF)
+    music = org_id(db, "ORG-0003")
+    r = client.post(f"/rosters/{music}/upload", data={"fiscal_year": "2026"}, files={"file": ("music.xlsx", good, "application/octet-stream")})
+    assert r.status_code == 200 and "取り込み内容の確認" in r.text
+    r = client.post(f"/rosters/{music}", data={"fiscal_year": "2026", "roster_text": text}, follow_redirects=False)
+    assert r.status_code == 303
+    assert len(db.scalars(select(Member).where(Member.organization_id == music, Member.fiscal_year == 2026)).all()) == 2
+    login(client, MANAGER)
+    assert "山田 一郎" in client.get(f"/rosters/{alpine}?fiscal_year=2026").text
+    assert client.post(f"/rosters/{alpine}", data={"fiscal_year": "2026", "roster_text": text}, follow_redirects=False).status_code == 403
 
 
 # シナリオ10: 自動処理が止まっても、登録内容から職員が手動で受付・通知できる

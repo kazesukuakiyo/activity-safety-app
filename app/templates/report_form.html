@@ -115,14 +115,29 @@
       <p style="margin:8px 0 4px"><strong>年度部員名簿から選ぶ</strong> <small class="help">(<span id="member-fy"></span> 年度) 選択中: <strong id="member-count">0</strong> 名 — <button type="button" class="link" id="member-all">全員を選択</button> / <button type="button" class="link" id="member-none">すべて解除</button></small></p>
       <div id="member-list" class="member-grid"></div>
     </div>
-    <p id="member-hint" class="note" hidden>この団体の年度部員名簿がまだ登録されていないか、あなたが代表者・副代表者として登録されていません。下の欄に貼り付けてください。</p>
+    <p id="member-hint" class="note" hidden>この団体の年度部員名簿がまだ登録されていないか、あなたが代表者・副代表者として登録されていません。年度名簿は「年度部員名簿」から提出できます。ここでは下の「追加の参加者」に記入してください。</p>
 
     <div class="field">
-      <label>貼り付けで追加 <span class="opt">部員名簿に無い人・部員名簿を使わない場合</span></label>
-      <span class="help">Excel で「学籍番号・氏名・所属・学年」の 4 列を範囲選択してコピーし、ここに貼り付けます (1 行 1 人)</span>
-      <textarea name="roster_text" id="roster_text" class="mono" rows="5" placeholder="2024001	山田 太郎	工学部	2&#10;2024002	佐藤 花子	文学部	1">{{ form.get('roster_text','') }}</textarea>
-      <div id="roster-parse" class="parse-result" hidden></div>
+      <label>追加の参加者 <span class="opt">任意</span></label>
+      <span class="help">年度部員名簿に載っていない人 (新入部員・他団体からの参加など) はここに記入します</span>
+      <div class="table-wrap"><table class="compact extra-rows" id="extra-rows">
+        <thead><tr><th>学籍番号</th><th>氏名</th><th>所属</th><th>学年</th><th></th></tr></thead>
+        <tbody>
+        {% for r in form.get('extra_rows', []) %}
+        <tr><td><input type="text" name="extra_student_no" value="{{ r.student_no }}"></td><td><input type="text" name="extra_name" value="{{ r.name }}"></td><td><input type="text" name="extra_department" value="{{ r.department }}"></td><td><input type="text" name="extra_grade" value="{{ r.grade }}" style="max-width:5em"></td><td><button type="button" class="link row-del">削除</button></td></tr>
+        {% endfor %}
+        <tr><td><input type="text" name="extra_student_no" placeholder="2025001"></td><td><input type="text" name="extra_name" placeholder="山田 太郎"></td><td><input type="text" name="extra_department" placeholder="工学部"></td><td><input type="text" name="extra_grade" placeholder="1" style="max-width:5em"></td><td><button type="button" class="link row-del">削除</button></td></tr>
+        </tbody>
+      </table></div>
+      <button type="button" class="btn secondary small" id="row-add" style="margin-top:6px">＋ 行を追加</button>
     </div>
+
+    <details style="margin-top:10px">
+      <summary class="help" style="cursor:pointer">大人数をまとめて貼り付ける (Excel からコピー)</summary>
+      <span class="help">「学籍番号・氏名・所属・学年」の 4 列を範囲選択してコピーし、貼り付けます (1 行 1 人)</span>
+      <textarea name="roster_text" id="roster_text" class="mono" rows="4" placeholder="2024001	山田 太郎	工学部	2&#10;2024002	佐藤 花子	文学部	1">{{ form.get('roster_text','') }}</textarea>
+      <div id="roster-parse" class="parse-result" hidden></div>
+    </details>
 
     <div class="banner info" style="margin-top:18px"><span class="icon">✔</span><div>
       <strong>提出前チェック</strong>
@@ -206,12 +221,28 @@
     return rows.length;
   }
 
+  // --- 追加の参加者 (行入力) ---
+  const rowsBody = document.querySelector('#extra-rows tbody');
+  function extraCount() {
+    return [...rowsBody.querySelectorAll('tr')].filter(tr => [...tr.querySelectorAll('input')].some(i => i.value.trim())).length;
+  }
+  $('row-add').addEventListener('click', () => {
+    const tr = rowsBody.querySelector('tr').cloneNode(true);
+    tr.querySelectorAll('input').forEach(i => i.value = '');
+    rowsBody.append(tr); bindRow(tr); tr.querySelector('input').focus();
+  });
+  function bindRow(tr) {
+    tr.querySelector('.row-del').addEventListener('click', () => { if (rowsBody.querySelectorAll('tr').length > 1) tr.remove(); else tr.querySelectorAll('input').forEach(i => i.value = ''); updateChecks(); });
+    tr.querySelectorAll('input').forEach(i => i.addEventListener('input', updateChecks));
+  }
+  rowsBody.querySelectorAll('tr').forEach(bindRow);
+
   // --- 提出前チェック ---
   function updateChecks() {
     const pasted = updateRoster();
     const picked = list.querySelectorAll('input:checked').length;
     $('member-count').textContent = picked;
-    const n = pasted + picked;
+    const n = pasted + picked + extraCount();
     $('chk-roster-n').textContent = n;
     $('chk-roster').classList.toggle('done', n > 0);
     $('chk-summary').classList.toggle('done', $('itinerary_summary').value.trim() !== '');

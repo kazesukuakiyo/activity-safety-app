@@ -144,3 +144,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0}dt{c
   table.responsive td.empty{display:block;text-align:center}
   .table-wrap{border:none}
 }
+
+/* 追加の参加者 (行入力) */
+table.extra-rows td{padding:3px 4px}table.extra-rows input{padding:6px 8px;font-size:.95em}table.extra-rows th{font-size:.82em}
+@media (max-width:720px){table.extra-rows{display:block}table.extra-rows thead{display:none}table.extra-rows tbody,table.extra-rows tr{display:block}table.extra-rows tr{display:grid;grid-template-columns:1fr 1fr;gap:4px;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px}table.extra-rows td{display:block;padding:0}table.extra-rows td:last-child{grid-column:1/-1;text-align:right}}
