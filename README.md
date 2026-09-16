@@ -121,11 +121,13 @@ uvicorn app.main:app --reload
 | 団体台帳 | `/orgs` | 職員・システム保守 |
 | 通知 (送信箱) | `/notifications` | 全員 (自分宛てのみ。職員は全件) |
 
-同じことを自動でチェックするテストがあります:
+同じことを自動でチェックするテストがあります。GitHub に push すると自動でも実行されます (Actions タブ)。
 
 ```bash
 pytest -v
 ```
+
+コードの直し方・DB 変更の手順は `docs/DEVELOPMENT.md` を見てください。
 
 ## フォルダ構成
 
@@ -147,7 +149,10 @@ activity-safety-app/
 │   ├── routers/           # 画面ごとの処理 (活動届・ダッシュボード・団体台帳・年度名簿・通知)
 │   ├── templates/         # HTML
 │   └── static/style.css
+├── migrations/            # DB のマイグレーション (Alembic)
 ├── tests/test_acceptance.py  # 受入シナリオの自動テスト
+├── docs/DEVELOPMENT.md    # 開発者向けメモ (コードの直し方)
+├── .github/workflows/ci.yml  # push のたびにテストと静的チェックを自動実行
 ├── seed.py                # サンプル団体の投入
 ├── requirements.txt
 └── .env.example           # 設定例
@@ -173,6 +178,7 @@ activity-safety-app/
 - 添付ファイル (行程表など) の上限は 20MB です。
 - 年度部員名簿の更新は「貼り付けた内容で丸ごと置き換え」です。1 人だけ直す UI は作っていません (Excel 側で直して貼り直す前提)。
 
-## DB を作り直したいとき
+## DB について
 
-テーブル構成を変えた版に更新したあとや、検証データを消したいときは、`data/` フォルダを削除して `python seed.py` をやり直してください。
+テーブル構成は Alembic (`migrations/`) で管理していて、アプリ起動時と `python seed.py` のときに自動で最新にそろえます。
+`git pull` で新しい版に更新したあとも、そのまま起動すれば DB が更新されます。検証データを全部消したいときだけ `data/` フォルダを削除して `python seed.py` をやり直してください。

@@ -1,0 +1,33 @@
+name: CI
+
+# push と Pull Request のたびに、書式チェックと受入テストを自動で実行する
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: 依存ライブラリ
+        run: pip install -r requirements.txt
+      - name: 書式・静的チェック (ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: マイグレーションが models.py と一致しているか
+        run: |
+          python seed.py
+          alembic check
+      - name: 受入テスト (pytest)
+        run: pytest -q

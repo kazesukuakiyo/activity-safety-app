@@ -13,6 +13,7 @@
 
 画面や業務ロジックは app/auth/base.py の User だけを見ているので、ここを実装すれば他は変更不要。
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request

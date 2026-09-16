@@ -4,6 +4,7 @@
 「学籍番号・氏名・所属・学年」の 4 列だけを持つ表として保持する。
 入力欄がこの 4 列しか無いので、病歴・保護者連絡先などの要配慮情報は物理的に登録できない。
 """
+
 from __future__ import annotations
 
 import enum
@@ -15,7 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .database import Base
 
 
-class ApplicantCheck(str, enum.Enum):
+class ApplicantCheck(enum.StrEnum):
     """6.2 申請者確認"""
 
     MATCH = "一致"
@@ -23,7 +24,7 @@ class ApplicantCheck(str, enum.Enum):
     UNVERIFIABLE = "照合不可"
 
 
-class ReportStatus(str, enum.Enum):
+class ReportStatus(enum.StrEnum):
     """6.2 状況"""
 
     UNCONFIRMED = "未確認"
@@ -33,10 +34,10 @@ class ReportStatus(str, enum.Enum):
     COMPLETED = "完了"
 
 
-class AttachmentKind(str, enum.Enum):
+class AttachmentKind(enum.StrEnum):
     """添付ファイルの種別 (名簿はファイルではなく表で持つので種別に含めない)"""
 
-    ITINERARY = "行程等"      # 行程表・活動計画書・大会要項
+    ITINERARY = "行程等"  # 行程表・活動計画書・大会要項
     OTHER = "その他"
 
 
@@ -46,12 +47,12 @@ class Organization(Base):
     __tablename__ = "organizations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(200), nullable=False)          # 団体名 (学生向け表示名)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)  # 団体名 (学生向け表示名)
     org_code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)  # 団体ID (不変キー)
-    rep_email: Mapped[str] = mapped_column(String(200), default="")         # 代表者メール
-    vice_rep_email: Mapped[str] = mapped_column(String(200), default="")    # 副代表者メール (任意)
-    advisor_email: Mapped[str] = mapped_column(String(200), default="")     # 顧問メール
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)          # 有効フラグ
+    rep_email: Mapped[str] = mapped_column(String(200), default="")  # 代表者メール
+    vice_rep_email: Mapped[str] = mapped_column(String(200), default="")  # 副代表者メール (任意)
+    advisor_email: Mapped[str] = mapped_column(String(200), default="")  # 顧問メール
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)  # 有効フラグ
 
     reports: Mapped[list[ActivityReport]] = relationship(back_populates="organization")
     members: Mapped[list[Member]] = relationship(back_populates="organization", cascade="all, delete-orphan")
@@ -70,10 +71,10 @@ class Member(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
     fiscal_year: Mapped[int] = mapped_column(Integer, nullable=False)
-    student_no: Mapped[str] = mapped_column(String(30), nullable=False)   # 学籍番号
-    name: Mapped[str] = mapped_column(String(100), nullable=False)        # 氏名
+    student_no: Mapped[str] = mapped_column(String(30), nullable=False)  # 学籍番号
+    name: Mapped[str] = mapped_column(String(100), nullable=False)  # 氏名
     department: Mapped[str] = mapped_column(String(100), nullable=False)  # 所属
-    grade: Mapped[str] = mapped_column(String(10), nullable=False)        # 学年
+    grade: Mapped[str] = mapped_column(String(10), nullable=False)  # 学年
     registered_by: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
@@ -90,43 +91,41 @@ class ActivityReport(Base):
 
     # --- 6.1 学生が入力する項目 ---
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), nullable=False)
-    content: Mapped[str] = mapped_column(Text, nullable=False)                 # 活動内容
-    start_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)       # 開始日時
-    end_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)         # 終了日時
-    location: Mapped[str] = mapped_column(Text, nullable=False)                # 活動場所・宿泊先
-    participants_count: Mapped[int] = mapped_column(Integer, nullable=False)   # 参加予定人数 (教職員等を含む合計)
-    leader_name: Mapped[str] = mapped_column(String(100), nullable=False)      # 現地責任者氏名
-    leader_phone: Mapped[str] = mapped_column(String(50), nullable=False)      # 現地責任者携帯番号 (文字列)
-    leader_email: Mapped[str] = mapped_column(String(200), nullable=False)     # 現地責任者メール
-    requires_precheck: Mapped[bool] = mapped_column(Boolean, nullable=False)   # 事前確認対象
-    itinerary_summary: Mapped[str] = mapped_column(Text, default="")           # 行程等の概要
-    declared_itinerary: Mapped[bool] = mapped_column(Boolean, default=False)   # 添付書類確認: 行程等
-    notes_to_university: Mapped[str] = mapped_column(Text, default="")         # 大学への連絡事項
+    content: Mapped[str] = mapped_column(Text, nullable=False)  # 活動内容
+    start_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)  # 開始日時
+    end_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)  # 終了日時
+    location: Mapped[str] = mapped_column(Text, nullable=False)  # 活動場所・宿泊先
+    participants_count: Mapped[int] = mapped_column(Integer, nullable=False)  # 参加予定人数 (教職員等を含む合計)
+    leader_name: Mapped[str] = mapped_column(String(100), nullable=False)  # 現地責任者氏名
+    leader_phone: Mapped[str] = mapped_column(String(50), nullable=False)  # 現地責任者携帯番号 (文字列)
+    leader_email: Mapped[str] = mapped_column(String(200), nullable=False)  # 現地責任者メール
+    requires_precheck: Mapped[bool] = mapped_column(Boolean, nullable=False)  # 事前確認対象
+    itinerary_summary: Mapped[str] = mapped_column(Text, default="")  # 行程等の概要
+    declared_itinerary: Mapped[bool] = mapped_column(Boolean, default=False)  # 添付書類確認: 行程等
+    notes_to_university: Mapped[str] = mapped_column(Text, default="")  # 大学への連絡事項
 
     # --- 6.2 内部管理項目 ---
     application_no: Mapped[str] = mapped_column(String(30), unique=True, default="")  # 申請番号 ACT-{id}
-    org_code: Mapped[str] = mapped_column(String(50), default="")               # 団体ID (台帳から自動取得)
+    org_code: Mapped[str] = mapped_column(String(50), default="")  # 団体ID (台帳から自動取得)
     applicant_name: Mapped[str] = mapped_column(String(100), default="")
     applicant_email: Mapped[str] = mapped_column(String(200), default="")
     applicant_check: Mapped[ApplicantCheck] = mapped_column(Enum(ApplicantCheck), default=ApplicantCheck.NEEDS_REVIEW)
     status: Mapped[ReportStatus] = mapped_column(Enum(ReportStatus), default=ReportStatus.UNCONFIRMED)
-    remarks: Mapped[str] = mapped_column(Text, default="")                      # 備考 (差戻し理由など)
-    source: Mapped[str] = mapped_column(String(50), default="WebForm")          # 作成元
-    missing_items: Mapped[str] = mapped_column(Text, default="")                # 不足検査の結果 (改行区切り)
-    last_notified_status: Mapped[str] = mapped_column(String(20), default="")   # 重複通知抑止用
-    revision: Mapped[int] = mapped_column(Integer, default=1)                   # 提出回数 (再提出で +1)
+    remarks: Mapped[str] = mapped_column(Text, default="")  # 備考 (差戻し理由など)
+    source: Mapped[str] = mapped_column(String(50), default="WebForm")  # 作成元
+    missing_items: Mapped[str] = mapped_column(Text, default="")  # 不足検査の結果 (改行区切り)
+    last_notified_status: Mapped[str] = mapped_column(String(20), default="")  # 重複通知抑止用
+    revision: Mapped[int] = mapped_column(Integer, default=1)  # 提出回数 (再提出で +1)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)   # 最終提出 (再提出) 日時
+    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)  # 最終提出 (再提出) 日時
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     updated_by: Mapped[str] = mapped_column(String(200), default="")
 
     organization: Mapped[Organization] = relationship(back_populates="reports")
     attachments: Mapped[list[Attachment]] = relationship(back_populates="report", cascade="all, delete-orphan")
-    participants: Mapped[list[Participant]] = relationship(back_populates="report", cascade="all, delete-orphan",
-                                                           order_by="Participant.id")
-    logs: Mapped[list[AuditLog]] = relationship(back_populates="report", cascade="all, delete-orphan",
-                                                order_by="AuditLog.id")
+    participants: Mapped[list[Participant]] = relationship(back_populates="report", cascade="all, delete-orphan", order_by="Participant.id")
+    logs: Mapped[list[AuditLog]] = relationship(back_populates="report", cascade="all, delete-orphan", order_by="AuditLog.id")
 
     @property
     def can_resubmit(self) -> bool:
@@ -162,7 +161,7 @@ class Attachment(Base):
     report_id: Mapped[int] = mapped_column(ForeignKey("activity_reports.id"), nullable=False)
     kind: Mapped[AttachmentKind] = mapped_column(Enum(AttachmentKind), nullable=False)
     original_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    stored_path: Mapped[str] = mapped_column(String(500), nullable=False)   # 保管先の相対パス
+    stored_path: Mapped[str] = mapped_column(String(500), nullable=False)  # 保管先の相対パス
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
@@ -179,7 +178,7 @@ class Notification(Base):
     to_email: Mapped[str] = mapped_column(String(200), nullable=False)
     subject: Mapped[str] = mapped_column(String(300), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
-    kind: Mapped[str] = mapped_column(String(50), default="")   # receipt / staff_request / result / missing など
+    kind: Mapped[str] = mapped_column(String(50), default="")  # receipt / staff_request / result / missing など
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 

@@ -7,6 +7,7 @@
 
 どの経路でも「4 列だけ」を強制し、それ以外の列 (要配慮情報など) は取り込まない。
 """
+
 from __future__ import annotations
 
 import csv
@@ -38,7 +39,7 @@ def _clean(value) -> str:
     if value is None:
         return ""
     if isinstance(value, float) and value.is_integer():
-        value = int(value)      # Excel の数値セル (学籍番号 2024001.0 → 2024001)
+        value = int(value)  # Excel の数値セル (学籍番号 2024001.0 → 2024001)
     return str(value).strip()
 
 
@@ -89,7 +90,7 @@ def parse_roster_file(filename: str, data: bytes) -> list[RosterRow]:
 
             wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
         except Exception:
-            raise RosterError("Excel ファイルとして読み込めませんでした。テンプレートを使って .xlsx で保存してください")
+            raise RosterError("Excel ファイルとして読み込めませんでした。テンプレートを使って .xlsx で保存してください") from None
         ws = wb.worksheets[0]
         table = [list(r) for r in ws.iter_rows(values_only=True)]
         wb.close()
@@ -116,7 +117,7 @@ def parse_roster_file(filename: str, data: bytes) -> list[RosterRow]:
 def rows_from_fields(student_nos, names, departments, grades) -> list[RosterRow]:
     """画面の行入力 (配列) から作る。すべて空の行は無視する。"""
     table = []
-    for cells in zip(student_nos, names, departments, grades):
+    for cells in zip(student_nos, names, departments, grades, strict=False):
         if any(_clean(c) for c in cells):
             table.append(list(cells))
     return _rows_from_cells(table)
@@ -166,8 +167,14 @@ def build_template_xlsx(org_name: str = "", fiscal_year: int | None = None) -> b
     ws.column_dimensions["C"].width = 18
     ws.column_dimensions["D"].width = 8
     ws.freeze_panes = "A2"
-    dv = DataValidation(type="list", formula1='"1,2,3,4,5,6,M1,M2,D1,D2,D3"', allow_blank=True, showErrorMessage=True,
-                        errorTitle="学年", error="1〜6, M1, M2, D1〜D3 から選んでください")
+    dv = DataValidation(
+        type="list",
+        formula1='"1,2,3,4,5,6,M1,M2,D1,D2,D3"',
+        allow_blank=True,
+        showErrorMessage=True,
+        errorTitle="学年",
+        error="1〜6, M1, M2, D1〜D3 から選んでください",
+    )
     ws.add_data_validation(dv)
     dv.add("D2:D501")
     # 学籍番号は文字列扱い (先頭 0 落ち防止)

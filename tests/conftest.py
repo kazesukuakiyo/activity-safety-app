@@ -1,4 +1,5 @@
 """テスト用の共通設定。一時ディレクトリに SQLite と保管先を作り、本物のデータを汚さない。"""
+
 from __future__ import annotations
 
 import os
@@ -32,6 +33,7 @@ def app_env():
 @pytest.fixture()
 def client(app_env):
     from fastapi.testclient import TestClient
+
     from app.main import app
 
     with TestClient(app) as c:

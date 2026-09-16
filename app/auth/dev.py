@@ -2,6 +2,7 @@
 
 一覧から利用者を選ぶだけでログインできる。本番では使わない (AUTH_MODE=entra)。
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Form, Request

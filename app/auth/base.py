@@ -4,6 +4,7 @@
 本番では app/auth/entra.py (Entra ID) に差し替える。
 どちらもセッションに同じ形式のユーザー情報を入れるので、画面側は変更不要。
 """
+
 from __future__ import annotations
 
 import enum
@@ -12,14 +13,14 @@ from dataclasses import dataclass
 from fastapi import HTTPException, Request, status
 
 
-class Role(str, enum.Enum):
+class Role(enum.StrEnum):
     """4. 利用者と権限"""
 
-    STUDENT = "student"      # 学生・団体代表者: 活動届を提出できる
-    ADVISOR = "advisor"      # 顧問: 通知を受ける (名簿は閲覧不可)
-    STAFF = "staff"          # 指定職員: 確認・状況更新・差戻し・名簿確認
-    MANAGER = "manager"      # 管理職・危機管理担当: 閲覧のみ
-    SYSADMIN = "sysadmin"    # システム保守: 台帳・設定の保守 (名簿は閲覧不可)
+    STUDENT = "student"  # 学生・団体代表者: 活動届を提出できる
+    ADVISOR = "advisor"  # 顧問: 通知を受ける (名簿は閲覧不可)
+    STAFF = "staff"  # 指定職員: 確認・状況更新・差戻し・名簿確認
+    MANAGER = "manager"  # 管理職・危機管理担当: 閲覧のみ
+    SYSADMIN = "sysadmin"  # システム保守: 台帳・設定の保守 (名簿は閲覧不可)
 
 
 ROLE_LABELS = {

@@ -9,6 +9,7 @@
   - 管理職: 全団体を閲覧のみ
   - 顧問・システム保守担当: 閲覧不可
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -67,24 +68,52 @@ def _members(db: Session, org: Organization, fy: int) -> list[Member]:
     return db.scalars(select(Member).where(Member.organization_id == org.id, Member.fiscal_year == fy).order_by(Member.student_no)).all()
 
 
-def _render(request: Request, user: User, org: Organization, members: list[Member], fy: int, *,
-            error: str = "", preview=None, preview_text: str = "", preview_source: str = "", status_code: int = 200):
-    return _tpl().TemplateResponse(request, "roster_org.html", {
-        "user": user, "org": org, "members": members, "fiscal_year": fy, "can_edit": can_write(user, org),
-        "error": error, "preview": preview, "preview_text": preview_text, "preview_source": preview_source,
-    }, status_code=status_code)
+def _render(
+    request: Request,
+    user: User,
+    org: Organization,
+    members: list[Member],
+    fy: int,
+    *,
+    error: str = "",
+    preview=None,
+    preview_text: str = "",
+    preview_source: str = "",
+    status_code: int = 200,
+):
+    return _tpl().TemplateResponse(
+        request,
+        "roster_org.html",
+        {
+            "user": user,
+            "org": org,
+            "members": members,
+            "fiscal_year": fy,
+            "can_edit": can_write(user, org),
+            "error": error,
+            "preview": preview,
+            "preview_text": preview_text,
+            "preview_source": preview_source,
+        },
+        status_code=status_code,
+    )
 
 
 @router.get("/template.xlsx")
-def template_xlsx(user: User = Depends(current_user), db: Session = Depends(get_db), org_id: int | None = None, fiscal_year: int | None = None):
+def template_xlsx(
+    user: User = Depends(current_user), db: Session = Depends(get_db), org_id: int | None = None, fiscal_year: int | None = None
+):
     """大学指定の名簿テンプレート"""
     org_name = ""
     if org_id:
         org = db.get(Organization, org_id)
         org_name = org.name if org else ""
     data = build_template_xlsx(org_name, fiscal_year or _fiscal_year())
-    return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    headers={"Content-Disposition": 'attachment; filename="roster_template.xlsx"'})
+    return Response(
+        data,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="roster_template.xlsx"'},
+    )
 
 
 @router.get("")
@@ -96,20 +125,30 @@ def index(request: Request, user: User = Depends(current_user), db: Session = De
         orgs = _my_orgs(db, user)
     else:
         raise forbidden("名簿保管先を閲覧する権限がありません")
-    counts = dict(db.execute(select(Member.organization_id, func.count()).where(Member.fiscal_year == fy).group_by(Member.organization_id)).all())
+    counts = dict(
+        db.execute(select(Member.organization_id, func.count()).where(Member.fiscal_year == fy).group_by(Member.organization_id)).all()
+    )
     return _tpl().TemplateResponse(request, "rosters.html", {"user": user, "orgs": orgs, "counts": counts, "fiscal_year": fy})
 
 
 @router.get("/{org_id}")
-def org_roster(org_id: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db), fiscal_year: int | None = None):
+def org_roster(
+    org_id: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db), fiscal_year: int | None = None
+):
     fy = fiscal_year or _fiscal_year()
     org = _org_for(db, user, org_id, write=False)
     return _render(request, user, org, _members(db, org, fy), fy)
 
 
 @router.post("/{org_id}/upload")
-async def upload(org_id: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db),
-                 fiscal_year: int = Form(...), file: UploadFile | None = None):
+async def upload(
+    org_id: int,
+    request: Request,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+    fiscal_year: int = Form(...),
+    file: UploadFile | None = None,
+):
     """ファイルを解析してプレビューを表示する (まだ保存しない)。"""
     org = _org_for(db, user, org_id, write=True)
     members = _members(db, org, fiscal_year)
@@ -123,13 +162,27 @@ async def upload(org_id: int, request: Request, user: User = Depends(current_use
     except RosterError as e:
         return _render(request, user, org, members, fiscal_year, error=str(e), status_code=400)
     if not rows:
-        return _render(request, user, org, members, fiscal_year, error="名簿の行が見つかりませんでした。テンプレートの「部員名簿」シートに記入してください", status_code=400)
+        return _render(
+            request,
+            user,
+            org,
+            members,
+            fiscal_year,
+            error="名簿の行が見つかりませんでした。テンプレートの「部員名簿」シートに記入してください",
+            status_code=400,
+        )
     return _render(request, user, org, members, fiscal_year, preview=rows, preview_text=rows_to_text(rows), preview_source=file.filename)
 
 
 @router.post("/{org_id}")
-def save_roster(org_id: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db),
-                fiscal_year: int = Form(...), roster_text: str = Form("")):
+def save_roster(
+    org_id: int,
+    request: Request,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+    fiscal_year: int = Form(...),
+    roster_text: str = Form(""),
+):
     """プレビュー確認後 (または貼り付け) の保存。その年度の名簿を丸ごと置き換える。"""
     org = _org_for(db, user, org_id, write=True)
     try:
@@ -140,8 +193,17 @@ def save_roster(org_id: int, request: Request, user: User = Depends(current_user
         db.delete(m)
     db.flush()
     for r in rows:
-        db.add(Member(organization_id=org.id, fiscal_year=fiscal_year, student_no=r.student_no, name=r.name,
-                      department=r.department, grade=r.grade, registered_by=user.email))
+        db.add(
+            Member(
+                organization_id=org.id,
+                fiscal_year=fiscal_year,
+                student_no=r.student_no,
+                name=r.name,
+                department=r.department,
+                grade=r.grade,
+                registered_by=user.email,
+            )
+        )
     db.commit()
     return RedirectResponse(f"/rosters/{org.id}?fiscal_year={fiscal_year}&saved=1", status_code=303)
 
@@ -154,13 +216,23 @@ def members_json(org_id: int, user: User = Depends(current_user), db: Session = 
     if org is None or not (user.can_submit and org.is_representative(user.email)):
         return JSONResponse({"members": [], "allowed": False})
     members = _members(db, org, fy)
-    return JSONResponse({"allowed": True, "fiscal_year": fy,
-                         "members": [{"id": m.id, "student_no": m.student_no, "name": m.name, "department": m.department, "grade": m.grade} for m in members]})
+    return JSONResponse(
+        {
+            "allowed": True,
+            "fiscal_year": fy,
+            "members": [
+                {"id": m.id, "student_no": m.student_no, "name": m.name, "department": m.department, "grade": m.grade} for m in members
+            ],
+        }
+    )
 
 
 @router.get("/{org_id}/members.csv")
 def members_csv(org_id: int, user: User = Depends(current_user), db: Session = Depends(get_db), fiscal_year: int | None = None):
     fy = fiscal_year or _fiscal_year()
     org = _org_for(db, user, org_id, write=False)
-    return Response(to_csv(_members(db, org, fy)), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="{org.org_code}_{fy}_members.csv"'})
+    return Response(
+        to_csv(_members(db, org, fy)),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{org.org_code}_{fy}_members.csv"'},
+    )

@@ -2,6 +2,7 @@
 
 実行:  pytest -v
 """
+
 from __future__ import annotations
 
 from sqlalchemy import select
@@ -10,9 +11,9 @@ from app.models import ActivityReport, Member, Notification, Organization
 
 from .conftest import ITINERARY_FILE, ROSTER_TEXT, login, report_data, submit_full, submit_report
 
-TENNIS_REP = "tanaka@example.ac.jp"      # 硬式テニス部の代表
-ALPINE_VICE = "suzuki@example.ac.jp"     # 登山部の副代表
-OTHER_STUDENT = "sato@example.ac.jp"     # どの団体の代表でもない
+TENNIS_REP = "tanaka@example.ac.jp"  # 硬式テニス部の代表
+ALPINE_VICE = "suzuki@example.ac.jp"  # 登山部の副代表
+OTHER_STUDENT = "sato@example.ac.jp"  # どの団体の代表でもない
 STAFF = "staff@example.ac.jp"
 MANAGER = "manager@example.ac.jp"
 ADVISOR = "advisor.tennis@example.ac.jp"
@@ -90,7 +91,7 @@ def test_3b_resubmit_after_return(client, db):
     assert rep.application_no == f"ACT-{rid:06d}"
     assert rep.status.value == "未確認" and rep.revision == 2 and rep.missing_items == ""
     assert len(rep.participants) == 2
-    assert any(l.action == "再提出前の差戻し理由" for l in rep.logs)
+    assert any(log.action == "再提出前の差戻し理由" for log in rep.logs)
     assert any("再提出" in n.subject for n in notifications_for(db, rid, "staff_request"))
 
     # 未確認になった届は再提出できない / 他人は編集できない
@@ -116,18 +117,22 @@ def test_3d_pick_participants_from_members(client, db):
     assert client.get(f"/rosters/{tennis}/members.json").json()["allowed"] is True
     data = report_data(org_id=tennis, precheck=True, roster="2099001\t追加 花子\t文学部\t1", declared=("itinerary",))
     data["member_ids"] = [str(i) for i in member_ids]
-    data["extra_student_no"] = ["2099002", ""]      # 行入力 1 名 + 空行 (無視される)
+    data["extra_student_no"] = ["2099002", ""]  # 行入力 1 名 + 空行 (無視される)
     data["extra_name"] = ["行入力 太郎", ""]
     data["extra_department"] = ["理学部", ""]
     data["extra_grade"] = ["2", ""]
     r = client.post("/reports/new", data=data, files=ITINERARY_FILE, follow_redirects=False)
     assert r.status_code == 303
     rep = get_report(db, int(r.headers["location"].split("/")[2]))
-    assert len(rep.participants) == 5   # 部員 3 名 + 行入力 1 名 + 貼り付け 1 名
+    assert len(rep.participants) == 5  # 部員 3 名 + 行入力 1 名 + 貼り付け 1 名
     assert any(p.student_no == "2099002" and p.name == "行入力 太郎" for p in rep.participants)
 
     # 行入力に空欄があればエラー
-    bad = dict(data); bad["extra_student_no"] = ["2099003"]; bad["extra_name"] = [""]; bad["extra_department"] = ["理学部"]; bad["extra_grade"] = ["1"]
+    bad = dict(data)
+    bad["extra_student_no"] = ["2099003"]
+    bad["extra_name"] = [""]
+    bad["extra_department"] = ["理学部"]
+    bad["extra_grade"] = ["1"]
     r = client.post("/reports/new", data=bad, files=ITINERARY_FILE, follow_redirects=False)
     assert r.status_code == 400 and "空欄" in r.text
 
@@ -182,21 +187,28 @@ def test_7_staff_returns_with_reason(client, db):
     login(client, TENNIS_REP)
     rid = submit_full(client, org_id=org_id(db, "ORG-0001"))
     login(client, STAFF)
-    client.post(f"/reports/{rid}/status", data={"status": "差戻し", "remarks": "行程表に宿泊先の住所を追記してください"}, follow_redirects=False)
+    client.post(
+        f"/reports/{rid}/status", data={"status": "差戻し", "remarks": "行程表に宿泊先の住所を追記してください"}, follow_redirects=False
+    )
     results = notifications_for(db, rid, "result")
     assert len(results) == 1 and "差戻し" in results[0].subject
     assert "宿泊先の住所" in results[0].body
 
     login(client, TENNIS_REP)
-    data = report_data(org_id=org_id(db, "ORG-0001"), precheck=True, roster=ROSTER_TEXT, declared=("itinerary",),
-                       itinerary_summary="10日: 移動 (宿泊先: ホテル△△ 〇〇市1-2-3)")
+    data = report_data(
+        org_id=org_id(db, "ORG-0001"),
+        precheck=True,
+        roster=ROSTER_TEXT,
+        declared=("itinerary",),
+        itinerary_summary="10日: 移動 (宿泊先: ホテル△△ 〇〇市1-2-3)",
+    )
     r = client.post(f"/reports/{rid}/edit", data=data, follow_redirects=False)  # 既存の添付はそのまま残る
     assert r.status_code == 303
     rep = get_report(db, rid)
     assert rep.status.value == "未確認" and rep.revision == 2 and len(rep.attachments) == 1
     login(client, STAFF)
     client.post(f"/reports/{rid}/status", data={"status": "確認済", "remarks": ""}, follow_redirects=False)
-    assert len(notifications_for(db, rid, "result")) == 2   # 再提出後の確認済は改めて通知される
+    assert len(notifications_for(db, rid, "result")) == 2  # 再提出後の確認済は改めて通知される
 
 
 # シナリオ8: 学生アカウントで一覧・他人の届・名簿にアクセス → 閲覧できない
@@ -247,16 +259,18 @@ def _xlsx(rows: list[list]) -> bytes:
 
     from openpyxl import Workbook
 
-    wb = Workbook(); ws = wb.active
+    wb = Workbook()
+    ws = wb.active
     for r in rows:
         ws.append(r)
-    buf = io.BytesIO(); wb.save(buf)
+    buf = io.BytesIO()
+    wb.save(buf)
     return buf.getvalue()
 
 
 def test_9_annual_roster_file_submission(client, db):
     alpine, tennis = org_id(db, "ORG-0002"), org_id(db, "ORG-0001")
-    login(client, ALPINE_VICE)   # 副代表は登録できる
+    login(client, ALPINE_VICE)  # 副代表は登録できる
 
     # テンプレートをダウンロードできる
     r = client.get(f"/rosters/template.xlsx?org_id={alpine}")
@@ -264,7 +278,9 @@ def test_9_annual_roster_file_submission(client, db):
 
     # アップロード → プレビュー (まだ保存されない)
     good = _xlsx([["学籍番号", "氏名", "所属", "学年"], [2023101, "山田 一郎", "理学部", 3], ["2024101", "鈴木 花子", "工学部", "2"]])
-    r = client.post(f"/rosters/{alpine}/upload", data={"fiscal_year": "2026"}, files={"file": ("members.xlsx", good, "application/octet-stream")})
+    r = client.post(
+        f"/rosters/{alpine}/upload", data={"fiscal_year": "2026"}, files={"file": ("members.xlsx", good, "application/octet-stream")}
+    )
     assert r.status_code == 200 and "取り込み内容の確認" in r.text and "山田 一郎" in r.text
     assert db.scalars(select(Member).where(Member.organization_id == alpine, Member.fiscal_year == 2026)).all() == []
 
@@ -277,7 +293,9 @@ def test_9_annual_roster_file_submission(client, db):
 
     # 5 列目 (既往歴) が入ったファイルは拒否
     bad = _xlsx([["学籍番号", "氏名", "所属", "学年", "既往歴"], ["2023102", "田中", "理学部", "3", "喘息"]])
-    r = client.post(f"/rosters/{alpine}/upload", data={"fiscal_year": "2026"}, files={"file": ("bad.xlsx", bad, "application/octet-stream")})
+    r = client.post(
+        f"/rosters/{alpine}/upload", data={"fiscal_year": "2026"}, files={"file": ("bad.xlsx", bad, "application/octet-stream")}
+    )
     assert r.status_code == 400 and "列数が 5" in r.text
 
     # CSV (Shift_JIS) も取り込める
@@ -287,12 +305,17 @@ def test_9_annual_roster_file_submission(client, db):
 
     # 登山部の副代表はテニス部の名簿を見られない・登録できない・フォーム用 JSON も取れない
     assert client.get(f"/rosters/{tennis}?fiscal_year=2026").status_code == 403
-    assert client.post(f"/rosters/{tennis}/upload", data={"fiscal_year": "2026"}, files={"file": ("m.xlsx", good, "application/octet-stream")}).status_code == 403
+    assert (
+        client.post(
+            f"/rosters/{tennis}/upload", data={"fiscal_year": "2026"}, files={"file": ("m.xlsx", good, "application/octet-stream")}
+        ).status_code
+        == 403
+    )
     assert client.post(f"/rosters/{tennis}", data={"fiscal_year": "2026", "roster_text": text}, follow_redirects=False).status_code == 403
     assert client.get(f"/rosters/{tennis}/members.json").json()["allowed"] is False
     assert client.get(f"/rosters/{tennis}/members.csv").status_code == 403
     html = client.get("/rosters").text
-    assert "登山部" in html and "硬式テニス部" not in html   # 一覧にも他団体は出ない
+    assert "登山部" in html and "硬式テニス部" not in html  # 一覧にも他団体は出ない
 
     # 代表でない学生・顧問・保守は不可
     login(client, OTHER_STUDENT)
@@ -306,7 +329,9 @@ def test_9_annual_roster_file_submission(client, db):
     # 職員は受領済みの名簿を代理で取り込める。管理職は閲覧のみ
     login(client, STAFF)
     music = org_id(db, "ORG-0003")
-    r = client.post(f"/rosters/{music}/upload", data={"fiscal_year": "2026"}, files={"file": ("music.xlsx", good, "application/octet-stream")})
+    r = client.post(
+        f"/rosters/{music}/upload", data={"fiscal_year": "2026"}, files={"file": ("music.xlsx", good, "application/octet-stream")}
+    )
     assert r.status_code == 200 and "取り込み内容の確認" in r.text
     r = client.post(f"/rosters/{music}", data={"fiscal_year": "2026", "roster_text": text}, follow_redirects=False)
     assert r.status_code == 303
@@ -323,9 +348,22 @@ def test_10_manual_fallback(client, db):
     from app.database import SessionLocal
 
     with SessionLocal() as s:
-        rep = ActivityReport(organization_id=org_id(db, "ORG-0001"), content="手動登録テスト", start_at=datetime(2026, 11, 1, 9), end_at=datetime(2026, 11, 1, 17),
-                             location="学外グラウンド", participants_count=5, leader_name="X", leader_phone="090", leader_email="x@example.ac.jp",
-                             requires_precheck=True, applicant_name="田中 太郎", applicant_email=TENNIS_REP, application_no="ACT-MANUAL-1", source="手動登録")
+        rep = ActivityReport(
+            organization_id=org_id(db, "ORG-0001"),
+            content="手動登録テスト",
+            start_at=datetime(2026, 11, 1, 9),
+            end_at=datetime(2026, 11, 1, 17),
+            location="学外グラウンド",
+            participants_count=5,
+            leader_name="X",
+            leader_phone="090",
+            leader_email="x@example.ac.jp",
+            requires_precheck=True,
+            applicant_name="田中 太郎",
+            applicant_email=TENNIS_REP,
+            application_no="ACT-MANUAL-1",
+            source="手動登録",
+        )
         s.add(rep)
         s.commit()
         rid = rep.id
@@ -342,10 +380,23 @@ def test_dashboard(client, db):
     now = datetime.now()
     fmt = "%Y-%m-%dT%H:%M"
     login(client, TENNIS_REP)
-    ongoing = submit_report(client, org_id=org_id(db, "ORG-0001"), precheck=False, content="いま活動中のテスト",
-                            location="△△湖 キャンプ場", start_at=(now - timedelta(hours=2)).strftime(fmt), end_at=(now + timedelta(hours=5)).strftime(fmt))
-    upcoming = submit_report(client, org_id=org_id(db, "ORG-0001"), precheck=False, content="3日後のテスト",
-                             start_at=(now + timedelta(days=3)).strftime(fmt), end_at=(now + timedelta(days=3, hours=8)).strftime(fmt))
+    ongoing = submit_report(
+        client,
+        org_id=org_id(db, "ORG-0001"),
+        precheck=False,
+        content="いま活動中のテスト",
+        location="△△湖 キャンプ場",
+        start_at=(now - timedelta(hours=2)).strftime(fmt),
+        end_at=(now + timedelta(hours=5)).strftime(fmt),
+    )
+    upcoming = submit_report(
+        client,
+        org_id=org_id(db, "ORG-0001"),
+        precheck=False,
+        content="3日後のテスト",
+        start_at=(now + timedelta(days=3)).strftime(fmt),
+        end_at=(now + timedelta(days=3, hours=8)).strftime(fmt),
+    )
     login(client, STAFF)
     html = client.get("/dashboard").text
     assert f"ACT-{ongoing:06d}" in html and f"ACT-{upcoming:06d}" in html

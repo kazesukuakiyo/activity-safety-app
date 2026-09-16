@@ -1,4 +1,5 @@
 """7.2 団体台帳の保守 (指定職員・システム保守担当)"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -47,17 +48,27 @@ def edit_org(org_id: int, request: Request, user: User = Depends(current_user), 
 
 
 @router.post("/save")
-def save_org(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db),
-             org_id: int | None = Form(None), name: str = Form(...), org_code: str = Form(...),
-             rep_email: str = Form(""), vice_rep_email: str = Form(""), advisor_email: str = Form(""),
-             is_active: str = Form("")):
+def save_org(
+    request: Request,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+    org_id: int | None = Form(None),
+    name: str = Form(...),
+    org_code: str = Form(...),
+    rep_email: str = Form(""),
+    vice_rep_email: str = Form(""),
+    advisor_email: str = Form(""),
+    is_active: str = Form(""),
+):
     _require(user)
     org = db.get(Organization, org_id) if org_id else Organization()
     if org is None:
         raise HTTPException(status_code=404, detail="団体が見つかりません")
     dup = db.scalar(select(Organization).where(Organization.org_code == org_code.strip()))
     if dup is not None and dup.id != org.id:
-        return _tpl().TemplateResponse(request, "org_form.html", {"user": user, "org": org, "error": "その団体IDは既に使われています"}, status_code=400)
+        return _tpl().TemplateResponse(
+            request, "org_form.html", {"user": user, "org": org, "error": "その団体IDは既に使われています"}, status_code=400
+        )
     org.name = name.strip()
     org.org_code = org_code.strip()
     org.rep_email = rep_email.strip()

@@ -167,6 +167,7 @@
 </section>
 </form>
 
+<script src="/static/roster.js"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -196,29 +197,10 @@
   $('member-none').onclick = () => { list.querySelectorAll('input').forEach(c => c.checked = false); updateChecks(); };
   sel.addEventListener('change', loadMembers);
 
-  // --- 貼り付け欄の即時チェック (サーバー側と同じ規則) ---
-  function parseRoster(text) {
-    const rows = [], errors = [], seen = new Set();
-    text.split(/\r?\n/).forEach((raw, i) => {
-      const line = raw.trim(); if (!line) return;
-      const cols = line.split(/\t|,|、|，/).map(c => c.trim());
-      while (cols.length && cols[cols.length - 1] === '') cols.pop();
-      if (cols.slice(0, 4).join() === '学籍番号,氏名,所属,学年') return;
-      if (cols.length !== 4) { errors.push((i + 1) + ' 行目: 列数が ' + cols.length + ' です (4 列にしてください)'); return; }
-      if (cols.some(c => c === '')) { errors.push((i + 1) + ' 行目: 空欄があります'); return; }
-      if (seen.has(cols[0])) { errors.push((i + 1) + ' 行目: 学籍番号 ' + cols[0] + ' が重複しています'); return; }
-      seen.add(cols[0]); rows.push(cols);
-    });
-    return { rows, errors };
-  }
+  // --- 貼り付け欄の即時チェック (static/roster.js) ---
   const rosterBox = $('roster_text'), parseOut = $('roster-parse');
   function updateRoster() {
-    const { rows, errors } = parseRoster(rosterBox.value);
-    if (!rosterBox.value.trim()) { parseOut.hidden = true; return rows.length; }
-    parseOut.hidden = false;
-    if (errors.length) { parseOut.className = 'parse-result err'; parseOut.textContent = errors.join('\n'); }
-    else { parseOut.className = 'parse-result ok'; parseOut.textContent = rows.length + ' 名を読み取りました: ' + rows.map(r => r[1]).slice(0, 5).join('、') + (rows.length > 5 ? ' …' : ''); }
-    return rows.length;
+    return RosterParse.preview(rosterBox, parseOut, rows => rows.length + ' 名を読み取りました: ' + rows.map(r => r[1]).slice(0, 5).join('、') + (rows.length > 5 ? ' …' : ''));
   }
 
   // --- 追加の参加者 (行入力) ---

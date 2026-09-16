@@ -1,4 +1,5 @@
 """設定値。環境変数または .env ファイルから読み込む。"""
+
 from __future__ import annotations
 
 import os

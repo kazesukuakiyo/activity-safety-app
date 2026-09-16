@@ -2,6 +2,7 @@
 
 本番でメール送信にする場合は send() の中を SMTP / Microsoft Graph 送信に差し替える。
 """
+
 from __future__ import annotations
 
 from sqlalchemy.orm import Session

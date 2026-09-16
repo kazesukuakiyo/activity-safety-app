@@ -2,6 +2,7 @@
 
 名簿はファイルとして受け取らない (models.Member / models.Participant に表として保持する)。
 """
+
 from __future__ import annotations
 
 import re

@@ -1,4 +1,5 @@
 """通知の送信箱 (ローカル検証用)。本番ではメールになる通知をここで確認する。"""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request

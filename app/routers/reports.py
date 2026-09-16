@@ -1,19 +1,20 @@
 """活動届: 学生の提出・再提出フォーム / 職員の一覧・詳細・状況更新"""
+
 from __future__ import annotations
 
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from starlette.datastructures import UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.datastructures import UploadFile
 
 from ..auth.base import Role, User, current_user, forbidden
 from ..database import get_db
 from ..models import ActivityReport, Attachment, AttachmentKind, AuditLog, Member, Organization, Participant, ReportStatus
 from ..services import intake, storage
-from ..services.roster import RosterError, RosterRow, merge, parse_roster_text, rows_from_fields, rows_to_text, to_csv
+from ..services.roster import RosterError, RosterRow, merge, parse_roster_text, rows_from_fields, to_csv
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -30,7 +31,7 @@ def _parse_dt(value: str, label: str) -> datetime:
     try:
         return datetime.fromisoformat(value)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"{label}の形式が正しくありません")
+        raise HTTPException(status_code=400, detail=f"{label}の形式が正しくありません") from None
 
 
 def _active_orgs(db: Session) -> list[Organization]:
@@ -64,12 +65,24 @@ def _member_orgs_for(user: User, orgs: list[Organization]) -> list[int]:
     return [o.id for o in orgs if o.is_representative(user.email)]
 
 
-def _render_form(request: Request, user: User, db: Session, *, report: ActivityReport | None, errors: list[str], form: dict, status_code: int = 200):
+def _render_form(
+    request: Request, user: User, db: Session, *, report: ActivityReport | None, errors: list[str], form: dict, status_code: int = 200
+):
     orgs = _active_orgs(db)
-    return _tpl().TemplateResponse(request, "report_form.html", {
-        "user": user, "orgs": orgs, "errors": errors, "form": form, "report": report,
-        "member_org_ids": _member_orgs_for(user, orgs), "fiscal_year": _fiscal_year(),
-    }, status_code=status_code)
+    return _tpl().TemplateResponse(
+        request,
+        "report_form.html",
+        {
+            "user": user,
+            "orgs": orgs,
+            "errors": errors,
+            "form": form,
+            "report": report,
+            "member_org_ids": _member_orgs_for(user, orgs),
+            "fiscal_year": _fiscal_year(),
+        },
+        status_code=status_code,
+    )
 
 
 async def _apply_form(request: Request, db: Session, user: User, report: ActivityReport, *, is_new: bool) -> list[str]:
@@ -90,8 +103,13 @@ async def _apply_form(request: Request, db: Session, user: User, report: Activit
         count = 0
     if count < 1:
         errors.append("参加予定人数は1以上にしてください")
-    for key, label in (("content", "活動内容"), ("location", "活動場所・宿泊先"), ("leader_name", "現地責任者氏名"),
-                       ("leader_phone", "現地責任者携帯番号"), ("leader_email", "現地責任者メール")):
+    for key, label in (
+        ("content", "活動内容"),
+        ("location", "活動場所・宿泊先"),
+        ("leader_name", "現地責任者氏名"),
+        ("leader_phone", "現地責任者携帯番号"),
+        ("leader_email", "現地責任者メール"),
+    ):
         if not (form.get(key) or "").strip():
             errors.append(f"{label}を入力してください")
     if form.get("requires_precheck") not in ("yes", "no"):
@@ -107,8 +125,9 @@ async def _apply_form(request: Request, db: Session, user: User, report: Activit
             members = db.scalars(select(Member).where(Member.id.in_(member_ids), Member.organization_id == org.id)).all()
             selected_rows = [RosterRow(m.student_no, m.name, m.department, m.grade) for m in members]
     try:
-        extra_rows = rows_from_fields(form.getlist("extra_student_no"), form.getlist("extra_name"),
-                                      form.getlist("extra_department"), form.getlist("extra_grade"))
+        extra_rows = rows_from_fields(
+            form.getlist("extra_student_no"), form.getlist("extra_name"), form.getlist("extra_department"), form.getlist("extra_grade")
+        )
     except RosterError as e:
         extra_rows = []
         errors.append("追加の参加者の入力に誤りがあります:\n" + str(e))
@@ -207,10 +226,15 @@ def edit_form(report_id: int, request: Request, user: User = Depends(current_use
     if not report.can_resubmit:
         raise HTTPException(status_code=400, detail="差戻し中の活動届だけ修正・再提出できます")
     form = {
-        "organization_id": report.organization_id, "content": report.content,
-        "start_at": report.start_at.strftime("%Y-%m-%dT%H:%M"), "end_at": report.end_at.strftime("%Y-%m-%dT%H:%M"),
-        "location": report.location, "participants_count": report.participants_count,
-        "leader_name": report.leader_name, "leader_phone": report.leader_phone, "leader_email": report.leader_email,
+        "organization_id": report.organization_id,
+        "content": report.content,
+        "start_at": report.start_at.strftime("%Y-%m-%dT%H:%M"),
+        "end_at": report.end_at.strftime("%Y-%m-%dT%H:%M"),
+        "location": report.location,
+        "participants_count": report.participants_count,
+        "leader_name": report.leader_name,
+        "leader_phone": report.leader_phone,
+        "leader_email": report.leader_email,
         "requires_precheck": "yes" if report.requires_precheck else "no",
         "itinerary_summary": report.itinerary_summary,
         "declared_docs": ["itinerary"] if report.declared_itinerary else [],
@@ -256,8 +280,7 @@ def done(report_id: int, request: Request, user: User = Depends(current_user), d
 
 # ------------------------------------------------------------ 一覧 (職員は全件、学生は自分の分のみ)
 @router.get("")
-def list_reports(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db),
-                 status: str = "", q: str = ""):
+def list_reports(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db), status: str = "", q: str = ""):
     stmt = select(ActivityReport).order_by(ActivityReport.id.desc())
     if user.can_view_all_reports:
         pass
@@ -278,10 +301,19 @@ def list_reports(request: Request, user: User = Depends(current_user), db: Sessi
     counts = {s: 0 for s in ReportStatus}
     for r in db.scalars(base_stmt):
         counts[r.status] += 1
-    return _tpl().TemplateResponse(request, "report_list.html", {
-        "user": user, "reports": reports, "statuses": list(ReportStatus), "status": status, "q": q,
-        "counts": counts, "total": sum(counts.values()),
-    })
+    return _tpl().TemplateResponse(
+        request,
+        "report_list.html",
+        {
+            "user": user,
+            "reports": reports,
+            "statuses": list(ReportStatus),
+            "status": status,
+            "q": q,
+            "counts": counts,
+            "total": sum(counts.values()),
+        },
+    )
 
 
 @router.get("/{report_id}")
@@ -291,15 +323,23 @@ def detail(report_id: int, request: Request, user: User = Depends(current_user),
         raise HTTPException(status_code=404, detail="活動届が見つかりません")
     if not _can_view(user, report):
         raise forbidden("この活動届を閲覧する権限がありません")
-    return _tpl().TemplateResponse(request, "report_detail.html", {
-        "user": user, "report": report, "statuses": list(ReportStatus),
-        "show_participants": _can_view_participants(user, report), "is_owner": _is_owner(user, report),
-    })
+    return _tpl().TemplateResponse(
+        request,
+        "report_detail.html",
+        {
+            "user": user,
+            "report": report,
+            "statuses": list(ReportStatus),
+            "show_participants": _can_view_participants(user, report),
+            "is_owner": _is_owner(user, report),
+        },
+    )
 
 
 @router.post("/{report_id}/status")
-def update_status(report_id: int, user: User = Depends(current_user), db: Session = Depends(get_db),
-                  status: str = Form(...), remarks: str = Form("")):
+def update_status(
+    report_id: int, user: User = Depends(current_user), db: Session = Depends(get_db), status: str = Form(...), remarks: str = Form("")
+):
     if not user.can_edit_reports:
         raise forbidden("状況の更新は指定職員のみ行えます")
     report = db.get(ActivityReport, report_id)
@@ -308,7 +348,7 @@ def update_status(report_id: int, user: User = Depends(current_user), db: Sessio
     try:
         new_status = ReportStatus(status)
     except ValueError:
-        raise HTTPException(status_code=400, detail="状況の値が不正です")
+        raise HTTPException(status_code=400, detail="状況の値が不正です") from None
     intake.update_status(db, report, user, new_status, remarks.strip())
     db.commit()
     return RedirectResponse(f"/reports/{report.id}", status_code=303)
@@ -322,8 +362,11 @@ def participants_csv(report_id: int, user: User = Depends(current_user), db: Ses
     report = db.get(ActivityReport, report_id)
     if report is None:
         raise HTTPException(status_code=404, detail="活動届が見つかりません")
-    return Response(to_csv(report.participants), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": f'attachment; filename="{report.application_no}_participants.csv"'})
+    return Response(
+        to_csv(report.participants),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{report.application_no}_participants.csv"'},
+    )
 
 
 @router.get("/{report_id}/attachments/{attachment_id}")

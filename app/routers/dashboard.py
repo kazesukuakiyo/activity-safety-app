@@ -3,6 +3,7 @@
 「いま学外にいる団体」「今週の予定」「未確認・差戻し中」を一画面にまとめ、
 現地責任者の連絡先と参加者数をすぐ引けるようにする。
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -21,8 +22,7 @@ ACTIVE = (ReportStatus.UNCONFIRMED, ReportStatus.CONFIRMED, ReportStatus.COMPLET
 
 
 @router.get("")
-def dashboard(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db),
-              q: str = "", on: str = ""):
+def dashboard(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db), q: str = "", on: str = ""):
     from ..main import templates
 
     if not user.can_view_all_reports:
@@ -37,8 +37,12 @@ def dashboard(request: Request, user: User = Depends(current_user), db: Session 
         stmt = select(ActivityReport).where(ActivityReport.status.in_(ACTIVE))
         if q:
             like = f"%{q}%"
-            stmt = stmt.where(ActivityReport.location.like(like) | ActivityReport.content.like(like)
-                              | ActivityReport.application_no.like(like) | ActivityReport.leader_name.like(like))
+            stmt = stmt.where(
+                ActivityReport.location.like(like)
+                | ActivityReport.content.like(like)
+                | ActivityReport.application_no.like(like)
+                | ActivityReport.leader_name.like(like)
+            )
         if on:
             try:
                 day = datetime.fromisoformat(on)
@@ -47,22 +51,66 @@ def dashboard(request: Request, user: User = Depends(current_user), db: Session 
                 pass
         search_results = list(db.scalars(stmt.order_by(ActivityReport.start_at)))
         if q:
-            search_results = [r for r in search_results if q in r.location or q in r.content or q in r.application_no
-                              or q in r.leader_name or q in r.organization.name]
+            search_results = [
+                r
+                for r in search_results
+                if q in r.location or q in r.content or q in r.application_no or q in r.leader_name or q in r.organization.name
+            ]
 
-    ongoing = list(db.scalars(select(ActivityReport).where(
-        ActivityReport.status.in_(ACTIVE), ActivityReport.start_at <= now, ActivityReport.end_at >= now,
-    ).order_by(ActivityReport.end_at)))
-    upcoming = list(db.scalars(select(ActivityReport).where(
-        ActivityReport.status.in_(ACTIVE), ActivityReport.start_at > now, ActivityReport.start_at <= week_end,
-    ).order_by(ActivityReport.start_at)))
-    unconfirmed = list(db.scalars(select(ActivityReport).where(ActivityReport.status == ReportStatus.UNCONFIRMED).order_by(ActivityReport.start_at)))
-    returned = list(db.scalars(select(ActivityReport).where(ActivityReport.status == ReportStatus.RETURNED).order_by(ActivityReport.submitted_at.desc())))
-    needs_review = list(db.scalars(select(ActivityReport).where(
-        ActivityReport.applicant_check != ApplicantCheck.MATCH, ActivityReport.status.in_(ACTIVE),
-    ).order_by(ActivityReport.id.desc())))
+    ongoing = list(
+        db.scalars(
+            select(ActivityReport)
+            .where(
+                ActivityReport.status.in_(ACTIVE),
+                ActivityReport.start_at <= now,
+                ActivityReport.end_at >= now,
+            )
+            .order_by(ActivityReport.end_at)
+        )
+    )
+    upcoming = list(
+        db.scalars(
+            select(ActivityReport)
+            .where(
+                ActivityReport.status.in_(ACTIVE),
+                ActivityReport.start_at > now,
+                ActivityReport.start_at <= week_end,
+            )
+            .order_by(ActivityReport.start_at)
+        )
+    )
+    unconfirmed = list(
+        db.scalars(select(ActivityReport).where(ActivityReport.status == ReportStatus.UNCONFIRMED).order_by(ActivityReport.start_at))
+    )
+    returned = list(
+        db.scalars(
+            select(ActivityReport).where(ActivityReport.status == ReportStatus.RETURNED).order_by(ActivityReport.submitted_at.desc())
+        )
+    )
+    needs_review = list(
+        db.scalars(
+            select(ActivityReport)
+            .where(
+                ActivityReport.applicant_check != ApplicantCheck.MATCH,
+                ActivityReport.status.in_(ACTIVE),
+            )
+            .order_by(ActivityReport.id.desc())
+        )
+    )
 
-    return templates.TemplateResponse(request, "dashboard.html", {
-        "user": user, "now": now, "ongoing": ongoing, "upcoming": upcoming, "unconfirmed": unconfirmed,
-        "returned": returned, "needs_review": needs_review, "q": q, "on": on, "search_results": search_results,
-    })
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {
+            "user": user,
+            "now": now,
+            "ongoing": ongoing,
+            "upcoming": upcoming,
+            "unconfirmed": unconfirmed,
+            "returned": returned,
+            "needs_review": needs_review,
+            "q": q,
+            "on": on,
+            "search_results": search_results,
+        },
+    )

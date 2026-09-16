@@ -1,4 +1,5 @@
 """課外活動安全管理システム (学外活動届) - ローカル検証用 Web アプリ"""
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -30,6 +31,7 @@ def _jdt(value, with_time: bool = True) -> str:
 
 
 templates.env.filters["jdt"] = _jdt
+
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
@@ -65,7 +67,9 @@ async def _http_error(request: Request, exc: StarletteHTTPException):
         return RedirectResponse(f"/auth/login?next={request.url.path}", status_code=303)
     user = user_from_session(request)
     return templates.TemplateResponse(
-        request, "error.html", {"user": user, "status_code": exc.status_code, "detail": exc.detail},
+        request,
+        "error.html",
+        {"user": user, "status_code": exc.status_code, "detail": exc.detail},
         status_code=exc.status_code,
     )
 
