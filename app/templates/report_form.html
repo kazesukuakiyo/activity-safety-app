@@ -19,10 +19,25 @@
     <p class="who-line">提出者: {{ user.name }} ({{ user.email }})</p>
     <div class="field">
       <label><span class="item-no">1.</span>所属する団体 <span class="req">必須</span></label>
-      <select name="organization_id" id="organization_id" required>
-        <option value="">選択してください</option>
-        {% for o in orgs %}<option value="{{ o.id }}" {% if form.get('organization_id')|string == o.id|string %}selected{% endif %} data-members="{{ '1' if o.id in member_org_ids else '' }}">{{ o.name }}</option>{% endfor %}
-      </select>
+      {% if my_orgs %}
+      <div id="org-mine" {% if show_all %}hidden{% endif %}>
+        <select name="organization_id" class="org-select" {% if show_all %}disabled{% endif %}>
+          {% if my_orgs|length > 1 %}<option value="">選択してください</option>{% endif %}
+          {% for o in my_orgs %}<option value="{{ o.id }}" {% if form.get('organization_id')|string == o.id|string %}selected{% endif %} data-members="1">{{ o.name }}</option>{% endfor %}
+        </select>
+        <span class="help">あなたが代表者・副代表者として登録されている団体です。<button type="button" class="link" id="org-show-all">一覧にない団体で提出する</button></span>
+      </div>
+      {% endif %}
+      <div id="org-all" {% if my_orgs and not show_all %}hidden{% endif %}>
+        <select name="organization_id" class="org-select" {% if my_orgs and not show_all %}disabled{% endif %} required>
+          <option value="">選択してください</option>
+          {% for o in orgs %}<option value="{{ o.id }}" {% if form.get('organization_id')|string == o.id|string %}selected{% endif %} data-members="{{ '1' if o.id in member_org_ids else '' }}">{{ o.name }}</option>{% endfor %}
+        </select>
+        <div class="banner warn" style="margin-top:8px"><span class="icon">⚠</span><div>
+          <strong>代表者・副代表者として登録されていない団体で提出しようとしています</strong>
+          <p>提出はできますが、職員が申請者を確認するまで受付が保留になります。団体台帳の代表者が古い場合は、担当部署に更新を依頼してください。{% if my_orgs %}<button type="button" class="link" id="org-show-mine">自分の団体一覧に戻る</button>{% endif %}</p>
+        </div></div>
+      </div>
     </div>
     <div class="field">
       <label><span class="item-no">2.</span>活動内容 <span class="req">必須</span></label>
@@ -171,7 +186,18 @@
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
-  const sel = $('organization_id'), picker = $('member-picker'), hint = $('member-hint'), list = $('member-list');
+  const picker = $('member-picker'), hint = $('member-hint'), list = $('member-list');
+  const orgMine = $('org-mine'), orgAll = $('org-all');
+  const sel = { get value() { return activeSel().value; }, get options() { return activeSel().options; }, get selectedIndex() { return activeSel().selectedIndex; } };
+  function activeSel() { return document.querySelector('.org-select:not([disabled])'); }
+  function switchOrg(showAll) {
+    if (!orgMine) return;
+    orgMine.hidden = showAll; orgMine.querySelector('select').disabled = showAll;
+    orgAll.hidden = !showAll; orgAll.querySelector('select').disabled = !showAll;
+    loadMembers();
+  }
+  $('org-show-all') && $('org-show-all').addEventListener('click', () => switchOrg(true));
+  $('org-show-mine') && $('org-show-mine').addEventListener('click', () => switchOrg(false));
   const preselected = new Set({{ form.get('member_ids', []) | tojson }}.map(String));
 
   // --- 年度部員名簿から選ぶ ---
@@ -198,7 +224,7 @@
   }
   $('member-all').onclick = () => { list.querySelectorAll('input').forEach(c => c.checked = true); updateChecks(); };
   $('member-none').onclick = () => { list.querySelectorAll('input').forEach(c => c.checked = false); updateChecks(); };
-  sel.addEventListener('change', loadMembers);
+  document.querySelectorAll('.org-select').forEach(el => el.addEventListener('change', loadMembers));
 
   // --- 貼り付け欄の即時チェック (static/roster.js) ---
   const rosterBox = $('roster_text'), parseOut = $('roster-parse');

@@ -414,3 +414,19 @@ def test_inactive_org_hidden_from_form(client):
     login(client, TENNIS_REP)
     html = client.get("/reports/new").text
     assert "硬式テニス部" in html and "旧・写真部" not in html
+
+
+# 団体の選択肢: 代表者・副代表者の団体だけを出し、例外として全団体も選べる
+def test_org_choices_limited_to_own(client, db):
+    login(client, TENNIS_REP)
+    html = client.get("/reports/new").text
+    mine = html.split('id="org-mine"')[1].split('id="org-all"')[0]
+    assert "硬式テニス部" in mine and "登山部" not in mine
+    assert "一覧にない団体で提出する" in html
+    assert 'id="org-all" hidden' in html  # 全団体の一覧は最初は隠れている
+
+    login(client, OTHER_STUDENT)  # どの団体の代表でもない → 最初から全団体 + 警告
+    html = client.get("/reports/new").text
+    assert 'id="org-mine"' not in html
+    assert 'id="org-all" hidden' not in html and "登録されていない団体で提出しようとしています" in html
+    assert "硬式テニス部" in html and "登山部" in html

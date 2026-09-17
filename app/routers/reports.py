@@ -66,19 +66,35 @@ def _member_orgs_for(user: User, orgs: list[Organization]) -> list[int]:
 
 
 def _render_form(
-    request: Request, user: User, db: Session, *, report: ActivityReport | None, errors: list[str], form: dict, status_code: int = 200
+    request: Request,
+    user: User,
+    db: Session,
+    *,
+    report: ActivityReport | None,
+    errors: list[str],
+    form: dict,
+    status_code: int = 200,
 ):
     orgs = _active_orgs(db)
+    my_org_ids = _member_orgs_for(user, orgs)
+    my_orgs = [o for o in orgs if o.id in my_org_ids]
+    selected = str(form.get("organization_id") or "")
+    # 自分の団体が無い、または選択済みの団体が自分の団体でない (再提出など) ときは最初から全団体を出す
+    show_all = not my_orgs or (selected != "" and selected not in {str(i) for i in my_org_ids})
+    if not selected and len(my_orgs) == 1:
+        form = {**form, "organization_id": my_orgs[0].id}  # 団体が 1 つなら選択済みにする
     return _tpl().TemplateResponse(
         request,
         "report_form.html",
         {
             "user": user,
             "orgs": orgs,
+            "my_orgs": my_orgs,
+            "show_all": show_all,
             "errors": errors,
             "form": form,
             "report": report,
-            "member_org_ids": _member_orgs_for(user, orgs),
+            "member_org_ids": my_org_ids,
             "fiscal_year": _fiscal_year(),
         },
         status_code=status_code,
