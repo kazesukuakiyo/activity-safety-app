@@ -115,7 +115,7 @@
       <p style="margin:8px 0 4px"><strong>年度部員名簿から選ぶ</strong> <small class="help">(<span id="member-fy"></span> 年度) 選択中: <strong id="member-count">0</strong> 名 — <button type="button" class="link" id="member-all">全員を選択</button> / <button type="button" class="link" id="member-none">すべて解除</button></small></p>
       <div id="member-list" class="member-grid"></div>
     </div>
-    <p id="member-hint" class="note" hidden>この団体の年度部員名簿がまだ登録されていないか、あなたが代表者・副代表者として登録されていません。年度名簿は「年度部員名簿」から提出できます。ここでは下の「追加の参加者」に記入してください。</p>
+    <p id="member-hint" class="note" hidden></p>
 
     <div class="field">
       <label>追加の参加者 <span class="opt">任意</span></label>
@@ -175,13 +175,16 @@
   const preselected = new Set({{ form.get('member_ids', []) | tojson }}.map(String));
 
   // --- 年度部員名簿から選ぶ ---
+  function showHint(msg) { hint.textContent = msg; hint.hidden = false; }
   async function loadMembers() {
     list.innerHTML = ''; picker.hidden = true; hint.hidden = true;
-    if (!sel.value) { updateChecks(); return; }
+    if (!sel.value) { showHint('先に「1. 所属する団体」を選ぶと、その団体の年度部員名簿がここにチェックボックスで表示されます。'); updateChecks(); return; }
     const opt = sel.options[sel.selectedIndex];
-    if (!opt.dataset.members) { hint.hidden = false; updateChecks(); return; }
-    const data = await (await fetch('/rosters/' + sel.value + '/members.json')).json();
-    if (!data.allowed || data.members.length === 0) { hint.hidden = false; updateChecks(); return; }
+    if (!opt.dataset.members) { showHint('あなたはこの団体の代表者・副代表者として登録されていないため、年度部員名簿は表示されません。下の「追加の参加者」に記入してください。'); updateChecks(); return; }
+    let data;
+    try { data = await (await fetch('/rosters/' + sel.value + '/members.json')).json(); }
+    catch (e) { showHint('年度部員名簿を読み込めませんでした。ページを再読み込みしてください。'); updateChecks(); return; }
+    if (!data.allowed || data.members.length === 0) { showHint('この団体の ' + (data.fiscal_year || '今') + ' 年度の部員名簿がまだ登録されていません。「年度部員名簿」から提出すると、ここで選べるようになります。'); updateChecks(); return; }
     $('member-fy').textContent = data.fiscal_year;
     for (const m of data.members) {
       const label = document.createElement('label'); label.className = 'radio';
