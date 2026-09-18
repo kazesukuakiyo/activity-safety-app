@@ -14,6 +14,18 @@ ruff check . && ruff format .      # 静的チェックと整形 (push 前に必
 GitHub に push すると `.github/workflows/ci.yml` が同じことを自動で実行します。
 赤くなったら、GitHub の「Actions」タブでどのステップが失敗したかを見てください。
 
+## AI アシスタントを使うとき
+
+GitHub Copilot (VS Code / GitHub.com) でも Claude Code でも使えます。決めごとは `AGENTS.md` に書いてあり、
+Copilot は `.github/copilot-instructions.md` (同じ内容) を、Claude Code は `CLAUDE.md` 経由で自動的に読みます。
+`AGENTS.md` を直したら `.github/copilot-instructions.md` にもコピーしてください。
+
+Copilot での標準的な流れ:
+1. GitHub の Issue に「何をしたいか」を日本語で書く
+2. VS Code の Copilot Chat (エージェント モード) か、GitHub.com の Copilot coding agent に Issue を渡す
+3. できた Pull Request で CI (テスト・静的チェック) が緑になっているのを確認し、Copilot のコードレビューも見る
+4. 動作を手元で確認してマージ → Azure に自動配備
+
 ## コードの読む順番
 
 1. `app/models.py` — テーブル定義。要件書の「活動届リスト」「団体台帳」「名簿」に対応
