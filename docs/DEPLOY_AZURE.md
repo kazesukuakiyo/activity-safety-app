@@ -20,20 +20,52 @@ Azure App Service ─── 「認証」機能が Entra ID ログインを肩代
 
 ## 事前に必要なもの
 
-| もの | 確認方法 |
-|---|---|
-| 大学の Azure サブスクリプション | 情報システム部門に「Azure のサブスクリプションで App Service を 1 つ作りたい」と相談する。個人契約の Azure は使わない |
-| Azure ポータルにログインできる大学アカウント | https://portal.azure.com を開いてログインできるか |
-| GitHub のリポジトリ | 大学名義に移した後のもの (個人アカウントのままなら先に移管) |
+### 人と権限
 
-費用の目安 (2026 年時点、東日本リージョン):
-
-| 用途 | プラン | 月額 |
+| 必要なもの | 誰が用意するか | 備考 |
 |---|---|---|
-| 試験運用 | App Service **B1** | 約 2,000 円 |
-| 本番 (数百団体) | App Service **P0v3** + PostgreSQL Flexible Server B1ms | 約 10,000 円 |
+| 大学の Azure サブスクリプション | 情報システム部門 | 個人契約の Azure は使わない。教育機関向けの契約 (EES / Azure for Education) があれば割引が効くことが多い |
+| リソース グループへの「共同作成者」権限 | 情報システム部門があなたに付与 | これがあれば App Service を自分で作れる |
+| Entra ID の「アプリの登録」を作る権限 | 情報システム部門 | ログイン機能に必要。自分で作れない大学が多いので、依頼して作ってもらう (下記の依頼文) |
+| GitHub の大学 Organization とリポジトリ | あなた + 情報システム部門 | 「デプロイ センター」で GitHub にログインする人が、そのリポジトリの管理者である必要がある |
+| 職員のメールアドレス一覧 | 学生支援課 | 役割の割り当て (`STAFF_EMAILS` など) に使う |
 
-無料プラン (F1) は「認証」機能とカスタム起動コマンドが制限されるので使いません。
+情報システム部門への依頼文の例:
+
+> 学生支援課の学外活動届システム (Web アプリ) を Azure App Service で運用したい。
+> (1) サブスクリプション内にリソース グループ `rg-activity-safety` を作り、私に共同作成者権限を付与してほしい。
+> (2) App Service の認証機能で Entra ID ログインを使うため、アプリの登録を 1 つ作ってほしい。
+>     名前: activity-safety-app、アカウントの種類: この組織のみ、
+>     リダイレクト URI: `https://<アプリ名>.azurewebsites.net/.auth/login/aad/callback`
+> (3) 将来メール通知を送るため、Microsoft Graph の Mail.Send 権限の付与を相談したい (今は不要)。
+
+### Azure に作るもの
+
+| 段階 | リソース | 用途 |
+|---|---|---|
+| 最初 | **App Service プラン + Web アプリ** (Linux, Python 3.12) | アプリ本体。DB (SQLite) と添付もこの中の `/home/data` に置く |
+| 最初 | **Entra ID アプリの登録** | ログイン。App Service の「認証」から自動作成、または上記の依頼で作成 |
+| 最初 | **GitHub との接続** (デプロイ センター) | push で自動配備 |
+| 任意 | **Application Insights** | 稼働監視・エラー通知 |
+| 任意 | **予算アラート** (コスト管理) | 月額が想定を超えたらメール |
+| 後で | **Azure Database for PostgreSQL** (Flexible Server) | 同時利用が増えたとき |
+| 後で | **ストレージ アカウント (Blob)** | 添付ファイルを App Service の外に出すとき |
+| 後で | **カスタム ドメイン + 証明書** | `katsudo.univ.ac.jp` のような URL にするとき。証明書は App Service の無料のもので可 |
+
+### 費用の目安
+
+概算です (2026 年時点の一般的な価格帯、Japan East、税別)。**必ず Azure の料金計算ツールで「Japan East・JPY」を選んで確認してください。** 大学の教育機関契約があれば下がります。
+
+| 構成 | 内訳 | 月額の目安 |
+|---|---|---|
+| **試験運用** (数団体で試す) | App Service Basic B1 (1 コア / 1.75 GB) | 約 2,000〜2,500 円 |
+| **本番・小規模** (全団体、同時利用は少ない) | App Service Basic B2 または Standard S1 | 約 4,000〜10,000 円 |
+| **本番・標準** (安定運用) | App Service Premium P0v3 + PostgreSQL Flexible Server B1ms (32GB) | 約 12,000〜16,000 円 |
+| 追加 | Application Insights (少量なら無料枠内)、Blob Storage (数 GB で数十円)、通信量 (無視できる程度) | 0〜数百円 |
+
+無料で済むもの: Entra ID のログイン機能 (App Service の認証は追加料金なし)、GitHub Actions (非公開リポジトリでも月 2,000 分まで無料)、App Service の無料 SSL 証明書。
+
+年額にすると、試験運用で約 3 万円、本番の標準構成で約 15〜20 万円が目安です。サーバーの保守 (OS 更新など) は Azure 側が行うので、人件費以外の維持費はこれだけです。
 
 ---
 
