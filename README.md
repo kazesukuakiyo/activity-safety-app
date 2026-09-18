@@ -120,6 +120,7 @@ uvicorn app.main:app --reload
 | 年度部員名簿 | `/rosters` | 代表者・副代表者は自団体を登録・更新、職員・管理職は全団体を閲覧 |
 | 団体台帳 | `/orgs` | 職員・システム保守 |
 | 通知 (送信箱) | `/notifications` | 全員 (自分宛てのみ。職員は全件) |
+| 設計書・手順書 | `/docs` | 職員・管理職・保守。`docs/` の Markdown をそのまま表示 |
 
 同じことを自動でチェックするテストがあります。GitHub に push すると自動でも実行されます (Actions タブ)。
 
@@ -151,6 +152,8 @@ activity-safety-app/
 │   └── static/style.css
 ├── migrations/            # DB のマイグレーション (Alembic)
 ├── tests/test_acceptance.py  # 受入シナリオの自動テスト
+├── docs/DESIGN.md         # 設計書 (アプリ内 /docs からも閲覧可)
+├── docs/REQUIREMENTS.md   # 要件定義書 v3.0 (Word 版を変換)
 ├── docs/DEVELOPMENT.md    # 開発者向けメモ (コードの直し方)
 ├── .github/workflows/ci.yml  # push のたびにテストと静的チェックを自動実行
 ├── seed.py                # サンプル団体の投入

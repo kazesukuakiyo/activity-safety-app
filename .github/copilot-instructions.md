@@ -21,6 +21,7 @@ FastAPI + SQLAlchemy + Jinja2 + SQLite (本番は PostgreSQL 想定)。UI・コ�
 - `app/auth/base.py` 役割と権限 (`User.can_*`)。`app/auth/easyauth.py` Azure の認証、`app/auth/dev.py` ローカルの疑似ログイン
 - `app/services/roster.py` と `app/static/roster.js` は同じ規則で名簿を検証する。片方を変えたら両方直す
 - `tests/test_acceptance.py` が仕様の実例。仕様を変えるときはテストも変える
+- `docs/DESIGN.md` が設計書 (アプリの /docs から閲覧される)。画面・業務ルール・テーブル・権限を変えたら同じコミットで更新する
 
 ## 守ること
 

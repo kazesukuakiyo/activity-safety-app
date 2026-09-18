@@ -148,3 +148,18 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0}dt{c
 /* 追加の参加者 (行入力) */
 table.extra-rows td{padding:3px 4px}table.extra-rows input{padding:6px 8px;font-size:.95em}table.extra-rows th{font-size:.82em}
 @media (max-width:720px){table.extra-rows{display:block}table.extra-rows thead{display:none}table.extra-rows tbody,table.extra-rows tr{display:block}table.extra-rows tr{display:grid;grid-template-columns:1fr 1fr;gap:4px;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px}table.extra-rows td{display:block;padding:0}table.extra-rows td:last-child{grid-column:1/-1;text-align:right}}
+
+/* 設計書・手順書 */
+.doc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.doc-card{display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;text-decoration:none;color:var(--fg);box-shadow:var(--shadow)}
+.doc-card:hover{border-color:var(--primary)}.doc-card span{color:var(--muted);font-size:.88em}
+.doc-layout{display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:start}
+.doc-side{position:sticky;top:60px}.doc-nav{display:flex;flex-direction:column;gap:2px;margin-bottom:14px}
+.doc-nav a{text-decoration:none;color:var(--fg);padding:6px 10px;border-radius:6px;font-size:.92em}.doc-nav a.active{background:var(--primary-soft);color:var(--primary);font-weight:600}
+.doc-toc{font-size:.85em;max-height:60vh;overflow:auto}.doc-toc ul{list-style:none;padding-left:10px;margin:4px 0}.doc-toc a{text-decoration:none;color:var(--muted)}.doc-toc a:hover{color:var(--primary)}
+.doc-body{max-width:none;line-height:1.75}.doc-body h1{font-size:1.5em;border-bottom:2px solid var(--line);padding-bottom:6px}
+.doc-body h2{font-size:1.25em;margin-top:32px;border-bottom:1px solid var(--line);padding-bottom:4px}.doc-body h3{font-size:1.05em;margin-top:22px}
+.doc-body table{margin:10px 0;font-size:.9em}.doc-body th{white-space:nowrap}
+.doc-body pre{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.85em;overflow-x:auto}.doc-body code{background:#f0f2f5;padding:1px 5px;border-radius:4px;font-size:.9em}
+.doc-body pre code{background:none;padding:0}.doc-body blockquote{border-left:4px solid var(--primary);margin:10px 0;padding:6px 14px;background:var(--primary-soft);border-radius:0 6px 6px 0}
+@media (max-width:720px){.doc-layout{grid-template-columns:1fr}.doc-side{position:static}.doc-toc{display:none}}

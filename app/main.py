@@ -56,13 +56,14 @@ else:
     from .auth import dev as auth_module
 app.include_router(auth_module.router)
 
-from .routers import dashboard, notifications, orgs, reports, rosters  # noqa: E402
+from .routers import dashboard, docs, notifications, orgs, reports, rosters  # noqa: E402
 
 app.include_router(dashboard.router)
 app.include_router(reports.router)
 app.include_router(orgs.router)
 app.include_router(rosters.router)
 app.include_router(notifications.router)
+app.include_router(docs.router)
 
 
 @app.exception_handler(StarletteHTTPException)

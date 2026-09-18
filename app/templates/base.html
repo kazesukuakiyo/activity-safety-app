@@ -23,6 +23,7 @@
       {% if user.can_view_rosters %}{{ nav('/rosters', '年度部員名簿', '/rosters') }}{% endif %}
       {% if user.can_manage_orgs %}{{ nav('/orgs', '団体台帳', '/orgs') }}{% endif %}
       {{ nav('/notifications', '通知') }}
+      {% if user.can_view_all_reports %}{{ nav('/docs', '設計書・手順書', '/docs') }}{% endif %}
     {% endif %}
   </nav>
   <div class="who">

@@ -430,3 +430,20 @@ def test_org_choices_limited_to_own(client, db):
     assert 'id="org-mine"' not in html
     assert 'id="org-all" hidden' not in html and "登録されていない団体で提出しようとしています" in html
     assert "硬式テニス部" in html and "登山部" in html
+
+
+# 設計書・手順書はアプリ内で職員・管理職・保守担当だけが読める
+def test_docs_visible_to_staff_only(client):
+    for email in (STAFF, MANAGER, SYSADMIN):
+        login(client, email)
+        assert "設計書" in client.get("/docs").text
+        html = client.get("/docs/design").text
+        assert "要件との対応表" in html and "<table>" in html
+        assert "Microsoft Lists Forms" in client.get("/docs/requirements").text
+    for email in (TENNIS_REP, ADVISOR):
+        login(client, email)
+        assert client.get("/docs").status_code == 403
+        assert client.get("/docs/design").status_code == 403
+    login(client, STAFF)
+    assert client.get("/docs/../etc/passwd").status_code in (404, 403)
+    assert client.get("/docs/nope").status_code == 404

@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block title %}{{ title if current else '設計書・手順書' }}{% endblock %}
+{% block content %}
+{% if not current %}
+<h1>設計書・手順書</h1>
+<p class="note">このシステムの文書はコードと同じリポジトリ (<code>docs/</code>) で版管理されています。ここではその最新版を表示します。</p>
+<div class="doc-cards">
+{% for key, (name, path, desc) in documents.items() %}
+  <a class="doc-card" href="/docs/{{ key }}"><strong>{{ name }}</strong><span>{{ desc }}</span></a>
+{% endfor %}
+</div>
+{% else %}
+<div class="doc-layout">
+  <aside class="doc-side">
+    <nav class="doc-nav">
+      {% for key, (name, path, desc) in documents.items() %}<a href="/docs/{{ key }}" class="{% if key == current %}active{% endif %}">{{ name }}</a>{% endfor %}
+    </nav>
+    <div class="doc-toc"><strong>目次</strong>{{ toc|safe }}</div>
+  </aside>
+  <article class="doc-body card">{{ body|safe }}</article>
+</div>
+{% endif %}
+{% endblock %}
