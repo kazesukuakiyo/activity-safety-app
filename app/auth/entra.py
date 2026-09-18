@@ -1,17 +1,16 @@
-"""Entra ID (旧 Azure AD) 認証。**未実装の枠** です。
+"""Entra ID 認証をアプリ自身で行う場合の枠 (MSAL 方式)。**通常は使わない。**
 
-後で実装するときの流れ (Authorization Code Flow):
+Azure App Service に置くなら、Azure 側の「認証」機能を使う app/auth/easyauth.py の方が
+シークレット管理もコードも不要で簡単。docs/DEPLOY_AZURE.md を参照。
+
+Azure App Service 以外 (学内サーバーなど) で動かす必要が出たときだけ、ここを実装する:
   1. pip install msal
-  2. Entra ID にアプリ登録し、リダイレクト URI に http://localhost:8000/auth/callback を登録
-  3. .env に ENTRA_TENANT_ID / ENTRA_CLIENT_ID / ENTRA_CLIENT_SECRET を設定し AUTH_MODE=entra
+  2. Entra ID にアプリ登録し、リダイレクト URI に https://<ホスト>/auth/callback を登録
+  3. 環境変数 ENTRA_TENANT_ID / ENTRA_CLIENT_ID / ENTRA_CLIENT_SECRET を設定し AUTH_MODE=entra
   4. /auth/login  … msal.ConfidentialClientApplication.get_authorization_request_url() へリダイレクト
      /auth/callback … acquire_token_by_authorization_code() で ID トークンを取得し、
-                       claims["preferred_username"] (メール) と claims["name"] を User に詰めて login_user()
-  5. 役割 (Role) の決め方は運用次第:
-       - Entra ID のアプリロール / グループ (claims["roles"] や "groups") で判定する
-       - または本アプリ側に「職員メール一覧」テーブルを持ち、メールで判定する (既定は学生)
-
-画面や業務ロジックは app/auth/base.py の User だけを見ているので、ここを実装すれば他は変更不要。
+                       claims["preferred_username"] と claims["name"] から User を作って login_user()
+     役割は easyauth.resolve_role() をそのまま使える
 """
 
 from __future__ import annotations
@@ -23,9 +22,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.get("/login")
 def login(request: Request):
-    raise HTTPException(status_code=501, detail="Entra ID 認証は未実装です。AUTH_MODE=dev でローカル検証してください。")
+    raise HTTPException(status_code=501, detail="MSAL 方式の Entra ID 認証は未実装です。Azure では AUTH_MODE=easyauth を使ってください。")
 
 
 @router.get("/callback")
 def callback(request: Request):
-    raise HTTPException(status_code=501, detail="Entra ID 認証は未実装です。")
+    raise HTTPException(status_code=501, detail="MSAL 方式の Entra ID 認証は未実装です。")

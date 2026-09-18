@@ -61,9 +61,9 @@ alembic check                                     # models.py とマイグレー
 
 | 何を | どこを | 備考 |
 |---|---|---|
-| 認証 (Entra ID) | `app/auth/entra.py` | `AUTH_MODE=entra`。Azure App Service なら Easy Auth でも可 |
+| 認証 (Entra ID) | `app/auth/easyauth.py` (実装済み) | `AUTH_MODE=easyauth`。役割は環境変数 `STAFF_EMAILS` 等と団体台帳の顧問メールで決まる |
 | メール送信 | `app/services/notify.py` の `send()` | SMTP か Microsoft Graph |
-| DB | `.env` の `DATABASE_URL` | PostgreSQL 推奨。`psycopg[binary]` を requirements に追加 |
+| DB | `.env` の `DATABASE_URL` | PostgreSQL 推奨。`psycopg[binary]` は requirements に入っている |
 | 添付ファイル | `app/services/storage.py` | Azure Blob Storage など |
 | 秘密鍵 | `.env` の `APP_SECRET_KEY` | 本番では必ずランダムな長い文字列に |
 

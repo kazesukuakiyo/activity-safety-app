@@ -35,6 +35,6 @@
 <main class="container">
 {% block content %}{% endblock %}
 </main>
-<footer class="foot">ローカル検証版 (認証: 疑似ログイン)。通知はメール送信の代わりに「通知」画面に記録されます。</footer>
+<footer class="foot">{% if auth_mode == "dev" %}ローカル検証版 (認証: 疑似ログイン)。{% endif %}通知はメール送信の代わりに「通知」画面に記録されます。</footer>
 </body>
 </html>

@@ -69,6 +69,19 @@ SESSION_KEY = "user"
 
 
 def user_from_session(request: Request) -> User | None:
+    """ログイン中の利用者を返す (未ログインなら None)。
+
+    認証方式によって取り出し元が変わる:
+      dev      … セッション Cookie (疑似ログイン)
+      easyauth … Azure App Service が付けるヘッダー (Entra ID でログイン済みの人)
+    画面・業務処理はこの関数だけを見ているので、方式が変わっても他は変更不要。
+    """
+    from ..config import settings
+
+    if settings.auth_mode == "easyauth":
+        from . import easyauth
+
+        return easyauth.user_from_request(request)
     data = request.session.get(SESSION_KEY)
     if not data:
         return None

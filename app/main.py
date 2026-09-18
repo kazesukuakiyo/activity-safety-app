@@ -1,4 +1,4 @@
-"""課外活動安全管理システム (学外活動届) - ローカル検証用 Web アプリ"""
+"""課外活動安全管理システム (学外活動届)"""
 
 from __future__ import annotations
 
@@ -31,22 +31,26 @@ def _jdt(value, with_time: bool = True) -> str:
 
 
 templates.env.filters["jdt"] = _jdt
+templates.env.globals["auth_mode"] = settings.auth_mode
 
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    init_db()
+    if settings.run_migrations_on_startup:
+        init_db()
     settings.activity_docs_dir.mkdir(parents=True, exist_ok=True)
     yield
 
 
 app = FastAPI(title="課外活動安全管理システム (学外活動届)", docs_url=None, redoc_url=None, lifespan=_lifespan)
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, same_site="lax", https_only=False)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, same_site="lax", https_only=settings.session_https_only)
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 
 
-# 認証方式の切替 (dev: 疑似ログイン / entra: Entra ID)
-if settings.auth_mode == "entra":
+# 認証方式の切替 (dev: 疑似ログイン / easyauth: Azure App Service の認証 (Entra ID))
+if settings.auth_mode == "easyauth":
+    from .auth import easyauth as auth_module
+elif settings.auth_mode == "entra":
     from .auth import entra as auth_module
 else:
     from .auth import dev as auth_module
@@ -72,6 +76,12 @@ async def _http_error(request: Request, exc: StarletteHTTPException):
         {"user": user, "status_code": exc.status_code, "detail": exc.detail},
         status_code=exc.status_code,
     )
+
+
+@app.get("/healthz")
+def healthz():
+    """死活監視用 (Azure App Service の Health check に設定する)"""
+    return {"status": "ok"}
 
 
 @app.get("/")

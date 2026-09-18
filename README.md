@@ -14,7 +14,7 @@ Microsoft 365 の構成要素は次のように置き換えています。
 | 参加者名簿保管先 (個人情報管理サイト) | `participants` / `members` テーブル (職員・管理職のみ閲覧可)。名簿はファイルではなく 4 列の表として保持 |
 | Power Automate (発番・照合・不足検査・通知・振分け) | `app/services/intake.py` |
 | メール通知 | ローカルでは DB に記録し `/notifications` 画面で確認 |
-| Entra ID 認証 | **後で実装**。今は疑似ログイン (`AUTH_MODE=dev`) |
+| Entra ID 認証 | Azure App Service の「認証」機能 (`AUTH_MODE=easyauth`)。ローカルは疑似ログイン (`AUTH_MODE=dev`) |
 
 ## 動かし方 (初回)
 
@@ -158,17 +158,14 @@ activity-safety-app/
 └── .env.example           # 設定例
 ```
 
-## Entra ID 認証に切り替えるとき
+## Azure (大学の Microsoft 環境) に載せるとき
 
-`app/auth/entra.py` のコメントに手順を書いています。概要:
+`docs/DEPLOY_AZURE.md` に、Azure ポータルの画面で押す順番をそのまま書いてあります。
+Entra ID ログインは Azure App Service の「認証」機能に任せる方式 (`AUTH_MODE=easyauth`) なので、アプリ側のコード変更は不要です。
 
-1. `pip install msal`
-2. Entra ID にアプリ登録 (リダイレクト URI: `http://localhost:8000/auth/callback`)
-3. `.env` に `AUTH_MODE=entra` とテナント ID / クライアント ID / シークレットを設定
-4. `entra.py` の `/auth/login` と `/auth/callback` を実装し、取得したメール・氏名を `login_user()` に渡す
-5. 役割 (学生/職員など) は Entra ID のグループかアプリロール、またはアプリ側の職員メール一覧で決める
+## Entra ID 認証を自前で実装するとき (Azure App Service を使わない場合のみ)
 
-画面や業務処理は `app/auth/base.py` の `User` しか見ていないので、他は変更不要です。
+`app/auth/entra.py` のコメントに手順を書いています。通常は不要です。
 
 ## 要件書との対応で意図的に簡略化した点
 
