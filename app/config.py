@@ -3,7 +3,15 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
+
+if sys.version_info < (3, 11):  # noqa: UP036  (古い Python で分かりやすく止めるための意図的な判定)
+    raise SystemExit(
+        f"このアプリは Python 3.11 以上が必要です (いまは {sys.version.split()[0]})。\n"
+        "python.org から新しい Python を入れるか、pyenv があれば `pyenv install 3.12 && pyenv local 3.12` を実行し、\n"
+        ".venv を作り直してください。詳しくは README.md の「動かし方」を参照。"
+    )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 

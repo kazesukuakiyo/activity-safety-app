@@ -20,6 +20,7 @@ Microsoft 365 の構成要素は次のように置き換えています。
 
 **Python 3.11 以上**が必要です。Mac に最初から入っている Python は古いので、先に新しいものを入れてください。
 
+- pyenv がある場合: `pyenv install 3.12 && pyenv local 3.12` (プロジェクトのフォルダ内で実行)
 - Homebrew がある場合: `brew install python@3.12`
 - 無い場合: https://www.python.org/downloads/macos/ のインストーラーを実行
 - 確認: `python3.12 --version` で `Python 3.12.x` と出れば OK
