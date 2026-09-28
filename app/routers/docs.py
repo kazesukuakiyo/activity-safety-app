@@ -22,6 +22,7 @@ DOCUMENTS: dict[str, tuple[str, Path, str]] = {
     "readme": ("使い方", BASE_DIR / "README.md", "起動方法・検証用ユーザー・動作確認の流れ"),
     "deploy": ("Azure 配備手順", BASE_DIR / "docs" / "DEPLOY_AZURE.md", "大学の Microsoft 環境に載せる手順"),
     "development": ("開発者向けメモ", BASE_DIR / "docs" / "DEVELOPMENT.md", "コードの直し方・DB 変更の手順"),
+    "it": ("情報システム部門への相談資料", BASE_DIR / "docs" / "IT_CONSULTATION.md", "Azure 配置・Entra ID・リポジトリ管理の相談用"),
 }
 
 
