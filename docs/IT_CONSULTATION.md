@@ -101,24 +101,26 @@ App Service の認証設定画面から自動作成できる場合は、そち�
 
 ## 6. 必要な Azure リソースと権限
 
-### 6.1 試験運用 (パイロット) 時
+### 6.1 試験運用および本番 (当面)
 
 | リソース | SKU / 設定 | 月額目安 |
 |---|---|---|
 | リソース グループ | `rg-activity-safety` (Japan East) | － |
-| App Service プラン | Linux, Basic B1 (1 vCPU / 1.75 GB) | 約 2,000〜2,500 円 |
-| Web アプリ | Python 3.12、組み込み認証 有効、ヘルスチェック `/healthz` | (プランに含む) |
+| App Service プラン | Linux, Basic B1 (1 vCPU / 1.75 GB)、Always On 有効 | 約 2,000〜2,500 円 |
+| Web アプリ | Python 3.12、組み込み認証 有効、ヘルスチェック `/healthz`、日次バックアップ | (プランに含む) |
 | Entra ID アプリ登録 | 5 章のとおり | 無料 |
 | (任意) Application Insights | 監視・エラー通知 | 無料枠内 |
 | (任意) 予算アラート | 月額上限の通知 | 無料 |
 
-### 6.2 本番移行時 (追加)
+想定規模 (活動届 年数千件、同時利用 数十人) では Basic B1 で本番運用可能と考えています。年額約 3 万円。
 
-| リソース | SKU | 月額目安 |
-|---|---|---|
-| App Service プラン | Premium P0v3 または Standard S1 | 約 8,000〜10,000 円 |
-| Azure Database for PostgreSQL Flexible Server | Burstable B1ms、32 GB、自動バックアップ 7 日 | 約 2,000〜4,000 円 |
-| ストレージ アカウント (Blob) | 添付ファイル用 | 数十〜数百円 |
+### 6.2 将来の拡張時 (必要になった場合のみ)
+
+| リソース | SKU | 月額目安 | 契機 |
+|---|---|---|---|
+| App Service プラン | Basic B2 または Premium P0v3 | 約 4,500〜10,000 円 | 応答が遅い、同時利用が増えた |
+| Azure Database for PostgreSQL Flexible Server | Burstable B1ms、32 GB、自動バックアップ 7 日 | 約 2,000〜4,000 円 | 複数インスタンス化、DB の分離 |
+| ストレージ アカウント (Blob) | 添付ファイル用 | 数十〜数百円 | 同上 |
 
 金額は概算です。教育機関向け契約の割引は考慮していません。
 
